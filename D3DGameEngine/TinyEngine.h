@@ -85,8 +85,12 @@ private:
 
 #ifdef TINY_ENGINE_IMPLEMENTATION
 
+#ifdef TINY_ENGINE_LAZY_LIBS
+
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
+
+#endif
 
 #include <iostream>
 

@@ -1,4 +1,6 @@
 #define TINY_ENGINE_IMPLEMENTATION
+#define TINY_ENGINE_LAZY_LIBS
+
 #include "TinyEngine.h"
 
 class Game
