@@ -59,7 +59,7 @@ namespace TinyEngine
 		virtual void OnInit() = 0;
 		virtual bool OnUpdate() = 0;
 
-		void DrawMesh(Mesh* mesh, Shader* shader = _defaultShader);
+		void DrawMesh(Mesh* mesh, Shader* shader = nullptr);
 
 	private:
 		static LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM lparam);
@@ -119,7 +119,7 @@ namespace TinyEngine
 		ID3D11InputLayout* _inputLayout;
 
 	public:
-		Shader(const char* vertexShaderBytecode, size_t vertexShaderSize, const char* pixelShaderBytecode, size_t pixelShaderSize, D3D11_INPUT_ELEMENT_DESC* inputDesc, size_t inputDescCount);
+		Shader(const char* vertexShaderBytecode, size_t vertexShaderSize, const char* pixelShaderBytecode, size_t pixelShaderSize, D3D11_INPUT_ELEMENT_DESC* inputDesc, unsigned int inputDescCount);
 		~Shader();
 
 		Shader(const Shader&) = delete;
@@ -135,8 +135,8 @@ namespace TinyEngine
 	//
 	//class Assets {
 	//public:
-	//	//Shader* LoadShader(const char* path);
-	//	//Mesh* LoadMesh(const char* path);
+	//	Shader* LoadShader(const char* path);
+	//	Mesh* LoadMesh(const char* path);
 	//};
 }
 
@@ -146,10 +146,12 @@ namespace TinyEngine
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d3dcompiler.lib")
 
 #endif
 
 #include <iostream>
+#include <d3dcompiler.h>
 
 using std::cerr;
 using std::endl;
@@ -160,7 +162,7 @@ namespace TinyEngine
 {
 	TinyEngineGame* RenderResource::_game;
 
-	TinyEngine::Shader::Shader(const char* vertexShaderBytecode, size_t vertexShaderSize, const char* pixelShaderBytecode, size_t pixelShaderSize, D3D11_INPUT_ELEMENT_DESC* inputDescs, size_t inputDescCount)
+	TinyEngine::Shader::Shader(const char* vertexShaderBytecode, size_t vertexShaderSize, const char* pixelShaderBytecode, size_t pixelShaderSize, D3D11_INPUT_ELEMENT_DESC* inputDescs, unsigned int inputDescCount)
 	{
 		auto device = _game->_device;
 		device->CreateVertexShader(vertexShaderBytecode, vertexShaderSize, nullptr, &_vertexShader);
@@ -235,6 +237,11 @@ namespace TinyEngine
 
 	inline void TinyEngineGame::DrawMesh(Mesh* mesh, Shader * shader)
 	{
+		if (shader == nullptr)
+		{
+			shader = _defaultShader;
+		}
+
 		auto context = _immediateContext;
 
 		const unsigned int stride = sizeof(VertexStandard);
@@ -242,6 +249,7 @@ namespace TinyEngine
 
 		context->IASetVertexBuffers(0, 1, &mesh->_vertexBuffer, &stride, &offset);
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		context->IASetInputLayout(shader->_inputLayout);
 
 		context->RSSetState(_defaultRasterizerState);
 
@@ -538,24 +546,58 @@ namespace TinyEngine
 	{
 		isRunning = true;
 
-		const auto defaultVShaderSource = ""
+		const auto vSource = ""
 			"struct VS_IN { float3 position: POSITION; float2 texcoord: TEXCOORD; float3 normal: NORMAL; };\n"
 			"float4 main(VS_IN i): SV_POSITION"
 			"{"
 			"	return float4(i.position, 1.0);"
 			"}";
 
-		const auto defaultFShaderSource = ""
+		const auto pSource = ""
 			"float4 main(): SV_TARGET"
 			"{"
 			"	return float4(1.0, 0.0, 0.0, 1.0);"
 			"}";
 
 		D3D11_INPUT_ELEMENT_DESC inputDescs[3] = {
-			{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, 0},
-			{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, 0},
-			{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 2, D3D11_APPEND_ALIGNED_ELEMENT, 0}
+			{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA},
+			{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA},
+			{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 2, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA}
 		};
+
+		ID3D10Blob* errors[2];
+		ID3D10Blob* vsBlob = nullptr;
+		ID3D10Blob* psBlob = nullptr;
+
+		unsigned int compileFlags = 0;
+
+#if DEBUG || _DEBUG
+		compileFlags |= D3DCOMPILE_DEBUG;
+#endif
+
+		auto include = D3D_COMPILE_STANDARD_FILE_INCLUDE;
+		HRESULT hr = D3DCompile(vSource, strlen(vSource), nullptr, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, NULL, &vsBlob, &errors[0]);
+		CHECK_HR(hr, "VS Could not be compiled.")
+		hr = D3DCompile(pSource, strlen(pSource), nullptr, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, NULL, &psBlob, &errors[1]);
+		CHECK_HR(hr, "PS Could not be compiled.")
+
+		for (int i = 0; i < 2; i++)
+		{
+			auto error = errors[i];
+			if (error)
+			{
+				PRINT_ERROR("Shader compilation failed");
+				OutputDebugString(static_cast<LPCSTR>(error->GetBufferPointer()));
+
+				error->Release();
+				error = nullptr;
+			}
+		}
+
+		_defaultShader = new Shader((char*)vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), (char*)psBlob->GetBufferPointer(), psBlob->GetBufferSize(), inputDescs, 3);
+
+		SAFE_RELEASE(vsBlob);
+		SAFE_RELEASE(psBlob);
 
 		OnInit();
 
