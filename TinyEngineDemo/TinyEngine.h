@@ -9,8 +9,6 @@
 #include <DirectXMath.h>
 #include <vector>
 
-#define SAFE_RELEASE(comptr) if (comptr) { comptr->Release(); comptr = nullptr; }
-
 #define PRINT_ERROR(x) std::cerr << __FILE__ << ":" << __LINE__ << " " << x << std::endl
 
 #define CHECK_HR(hr, message) if (FAILED(hr)) {_com_error err(hr); PRINT_ERROR(message << "\n\t" << err.ErrorMessage()); }
@@ -101,12 +99,16 @@ namespace TinyEngine
 
 	public:
 		Mesh();
+		Mesh(const char* path);
 		~Mesh();
 
 		Mesh(const Mesh&) = delete;
 
 		void SetVertices(VertexStandard* vertices, unsigned int numVertices);
 		void AddIndexBuffer(unsigned int* indices, unsigned int numIndices);
+
+	private:
+		void ParseObjFace(const char* face, int* p, int* t, int* n);
 	};
 
 	class Shader :
@@ -142,6 +144,9 @@ namespace TinyEngine
 
 #ifdef TINY_ENGINE_IMPLEMENTATION
 
+#define SAFE_RELEASE(comptr) if (comptr) { comptr->Release(); comptr = nullptr; }
+#define SAFE_DELETE(ptr) if (ptr) { delete ptr; ptr = nullptr; }
+
 #ifdef TINY_ENGINE_LAZY_LIBS
 
 #pragma comment(lib, "d3d11.lib")
@@ -151,10 +156,22 @@ namespace TinyEngine
 #endif
 
 #include <iostream>
+#include <fstream>
 #include <d3dcompiler.h>
+#include <string>
+#include <sstream>
+#include <map>
+#include <vector>
 
 using std::cerr;
 using std::endl;
+using std::ifstream;
+using std::string;
+using std::cout;
+using std::stringstream;
+using std::map;
+using std::vector;
+using std::getline;
 
 using namespace DirectX;
 
@@ -178,9 +195,145 @@ namespace TinyEngine
 		SAFE_RELEASE(_inputLayout);
 	}
 
-	TinyEngine::Mesh::Mesh()
+	inline Mesh::Mesh(): _numVertices(0), _vertexBuffer(nullptr)
 	{
 
+	}
+
+	// This should absolutely not be the responsibility of the engine. This should go in a TinyEngineAssets extension library.
+	inline Mesh::Mesh(const char* path): _numVertices(0), _vertexBuffer(nullptr)
+	{
+		struct ObjData {
+			vector<XMFLOAT3> positions;
+			vector<XMFLOAT2> texcoords;
+			vector<XMFLOAT3> normals;
+			vector<vector<VertexStandard>> faces;
+		};
+
+		map<string, ObjData*> objMap;
+
+		// Load mesh at this location.
+		ifstream file(path);
+
+		if (file.is_open())
+		{
+			string line;
+			ObjData* currentObj = nullptr;
+			while (std::getline(file, line))
+			{
+				stringstream lineStream(line);
+				string instruction;
+
+				lineStream >> instruction;
+				if (instruction == "#")
+				{
+					continue;
+				}
+				else if (instruction == "o")
+				{
+					string name;
+					lineStream >> name;
+					objMap[name] = new ObjData();
+					currentObj = objMap[name];
+				}
+				else if (instruction == "v")
+				{
+					float x, y, z;
+					lineStream >> x >> y >> z;
+					currentObj->positions.emplace_back(x, y, z);
+				}
+				else if (instruction == "vt")
+				{
+					float u, v, w;
+					lineStream >> u >> v >> w;
+
+					if (!w) PRINT_ERROR("Mesh with 3 component texcoords is not supported.");
+
+					currentObj->texcoords.emplace_back(u, v);
+				}
+				else if (instruction == "vn")
+				{
+					float i, j, k;
+					lineStream >> i >> j >> k;
+					currentObj->normals.emplace_back(i, j, k);
+				}
+				else if (instruction == "f")
+				{
+					int positions[4];
+					int texcoords[4];
+					int normals[4];
+
+					// Populate pos, tex, norm with data from face slash separated values.
+					string faceString;
+					int index = 0;
+					while (index < 4)
+					{
+						lineStream >> faceString;
+						if (faceString == "") break;
+						ParseObjFace(faceString.c_str(), &positions[index], &texcoords[index], &normals[index]);
+						index++;
+					}
+
+					std::vector<VertexStandard> face;
+					face.push_back({currentObj->positions[positions[0] - 1], currentObj->texcoords[texcoords[0] - 1], currentObj->normals[normals[0] - 1]});
+					face.push_back({currentObj->positions[positions[1] - 1], currentObj->texcoords[texcoords[1] - 1], currentObj->normals[normals[1] - 1]});
+					face.push_back({currentObj->positions[positions[2] - 1], currentObj->texcoords[texcoords[2] - 1], currentObj->normals[normals[2] - 1]});
+
+					if (index > 3)
+					{
+						face.push_back({currentObj->positions[positions[3] - 1], currentObj->texcoords[texcoords[3] - 1], currentObj->normals[normals[3] - 1]});
+					}
+
+					currentObj->faces.push_back(face);
+				}
+			}
+		}
+		else
+		{
+			PRINT_ERROR("Could not open file: " << path);
+		}
+
+		if (objMap.size())
+		{
+			std::vector<VertexStandard> vertices;
+			unsigned int lastVertex = 0;
+
+			// Build Vbuffer and Ibuffers
+			for (auto it = objMap.begin(); it != objMap.end(); it++)
+			{
+				auto obj = it->second;
+
+				vector<unsigned int> indices;
+
+				for (const auto& face : obj->faces)
+				{
+					vertices.insert(vertices.begin(), face.begin(), face.end());
+
+					indices.push_back(lastVertex);
+					indices.push_back(lastVertex + 1);
+					indices.push_back(lastVertex + 2);
+
+					unsigned int increment = 3;
+
+					if (face.size() == 4)
+					{
+						indices.push_back(lastVertex + 0);
+						indices.push_back(lastVertex + 2);
+						indices.push_back(lastVertex + 3);
+
+						increment++;
+					}
+
+					lastVertex += increment;
+				}
+
+				AddIndexBuffer(indices.data(), static_cast<unsigned int>(indices.size()));
+
+				delete objMap[it->first];
+			}
+
+			SetVertices(vertices.data(), static_cast<unsigned int>(vertices.size()));
+		}
 	}
 
 	inline Mesh::~Mesh()
@@ -217,7 +370,7 @@ namespace TinyEngine
 		D3D11_BUFFER_DESC bd;
 		bd.ByteWidth = numIndices * sizeof(unsigned int);
 		bd.Usage = D3D11_USAGE_IMMUTABLE;
-		bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
 		bd.CPUAccessFlags = NULL;
 		bd.MiscFlags = NULL;
 		bd.StructureByteStride = 0;
@@ -233,6 +386,15 @@ namespace TinyEngine
 
 		_indexBuffers.push_back(indexBuffer);
 		_indexBufferSizes.push_back(numIndices);
+	}
+
+	inline void Mesh::ParseObjFace(const char* face, int* p, int* t, int* n)
+	{
+		stringstream faceStream(face);
+		string elem;
+		if (getline(faceStream, elem, '/')) *p = std::stoi(elem);
+		if (getline(faceStream, elem, '/')) *t = std::stoi(elem);
+		faceStream >> *n;
 	}
 
 	inline void TinyEngineGame::DrawMesh(Mesh* mesh, Shader * shader)
@@ -256,7 +418,20 @@ namespace TinyEngine
 		context->VSSetShader(shader->_vertexShader, nullptr, 0);
 		context->PSSetShader(shader->_pixelShader, nullptr, 0);
 
-		context->Draw(mesh->_numVertices, 0);
+		if (mesh->_indexBuffers.size())
+		{
+			for (int i = 0; i < mesh->_indexBuffers.size(); i++)
+			{
+				context->IASetIndexBuffer(mesh->_indexBuffers[i], DXGI_FORMAT_R32_UINT, 0);
+
+				// could maybe use this if the index buffer only draws from vert n. optimize the space slightly.
+				context->DrawIndexed(mesh->_indexBufferSizes[i], 0, 0);
+			}
+		}
+		else
+		{
+			context->Draw(mesh->_numVertices, 0);
+		}
 	}
 
 	inline LRESULT CALLBACK TinyEngineGame::WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM lparam)
@@ -300,6 +475,9 @@ namespace TinyEngine
 
 	inline TinyEngineGame::~TinyEngineGame()
 	{
+		SAFE_DELETE(_defaultShader);
+		
+		SAFE_RELEASE(_defaultRasterizerState);
 		SAFE_RELEASE(_depthStencilView);
 		SAFE_RELEASE(_backBufferView);
 		SAFE_RELEASE(_swapChain);
@@ -548,21 +726,26 @@ namespace TinyEngine
 
 		const auto vSource = ""
 			"struct VS_IN { float3 position: POSITION; float2 texcoord: TEXCOORD; float3 normal: NORMAL; };\n"
-			"float4 main(VS_IN i): SV_POSITION"
+			"struct VS_OUT { float4 position: SV_POSITION; float3 normal: NORMAL; };\n"
+			"VS_OUT main(VS_IN i)\n"
 			"{"
-			"	return float4(i.position, 1.0);"
-			"}";
+			"	VS_OUT o;\n"
+			"	o.normal = i.normal;\n"
+			"	o.position = float4(i.position, 1.0);\n"
+			"	return o;\n"
+			"}\n";
 
 		const auto pSource = ""
-			"float4 main(): SV_TARGET"
-			"{"
-			"	return float4(1.0, 0.0, 0.0, 1.0);"
-			"}";
+			"struct VS_OUT { float4 position: SV_POSITION; float3 normal: NORMAL; };\n"
+			"float4 main(VS_OUT i): SV_TARGET\n"
+			"{\n"
+			"	return float4(i.normal.xyz, 1.0);\n"
+			"}\n";
 
 		D3D11_INPUT_ELEMENT_DESC inputDescs[3] = {
 			{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA},
-			{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 1, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA},
-			{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 2, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA}
+			{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA},
+			{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA}
 		};
 
 		ID3D10Blob* errors[2];
@@ -587,7 +770,7 @@ namespace TinyEngine
 			if (error)
 			{
 				PRINT_ERROR("Shader compilation failed");
-				OutputDebugString(static_cast<LPCSTR>(error->GetBufferPointer()));
+				PRINT_ERROR(static_cast<LPCSTR>(error->GetBufferPointer()));
 
 				error->Release();
 				error = nullptr;

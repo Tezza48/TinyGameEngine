@@ -9,28 +9,38 @@ class Game
 	: public TinyEngineGame
 {
 private:
-	Mesh* testMesh;
+	Mesh* _testMesh;
 public:
-	Game() : TinyEngineGame(1280, 720, "Game") {
+	Game() : TinyEngineGame(1280, 720, "Game"), _testMesh(nullptr)
+	{
 
+	}
+
+	~Game()
+	{
+		if (_testMesh)
+		{
+			delete _testMesh;
+			_testMesh = nullptr;
+		}
 	}
 
 private:
 	void OnInit() override
 	{
-		testMesh = new Mesh();
+		_testMesh = new Mesh("./assets/mesh/icosphere.obj");
 
-		VertexStandard vertices[3];
-		vertices[0].position = XMFLOAT3(-0.5f, -0.5f, 0.0f);
-		vertices[1].position = XMFLOAT3(0.0f, 0.5f, 0.0f);
-		vertices[2].position = XMFLOAT3(0.5f, -0.5f, 0.0f);
+		//VertexStandard vertices[3];
+		//vertices[0].position = XMFLOAT3(-0.5f, -0.5f, 0.0f);
+		//vertices[1].position = XMFLOAT3(0.0f, 0.5f, 0.0f);
+		//vertices[2].position = XMFLOAT3(0.5f, -0.5f, 0.0f);
 
-		testMesh->SetVertices(vertices, 3);
+		//_testMesh->SetVertices(vertices, 3);
 	}
 
 	bool OnUpdate() override
 	{
-		DrawMesh(testMesh);
+		DrawMesh(_testMesh);
 
 		return true;
 	}

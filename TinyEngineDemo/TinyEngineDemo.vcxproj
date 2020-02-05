@@ -116,7 +116,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="TinyEngine.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TinyEngine.h" />
