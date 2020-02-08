@@ -8,15 +8,36 @@
 #include <comdef.h>
 #include <DirectXMath.h>
 #include <vector>
+#include <chrono>
+#include <map>
 
 #define PRINT_ERROR(x) std::cerr << __FILE__ << ":" << __LINE__ << " " << x << std::endl
 
 #define CHECK_HR(hr, message) if (FAILED(hr)) {_com_error err(hr); PRINT_ERROR(message << "\n\t" << err.ErrorMessage()); }
 
+#define PI 3.1416f
+
 namespace TinyEngine
 {
 	class Mesh;
 	class Shader;
+	class Camera;
+
+	struct Material {
+	public:
+		DirectX::XMFLOAT3 ambient;
+		float _pad0;
+		DirectX::XMFLOAT3 diffuse;
+		float _pad1;
+		DirectX::XMFLOAT3 specular;
+		float _pad2;
+		float specularExponent;
+		float transparency;
+		float _pad3[2];
+
+		Material();
+		Material(DirectX::XMFLOAT3 ambient, DirectX::XMFLOAT3 diffuse, DirectX::XMFLOAT3 specular, float specularExponent, float transparency);
+	};
 
 	class TinyEngineGame
 	{
@@ -39,6 +60,9 @@ namespace TinyEngine
 
 		ID3D11RasterizerState* _defaultRasterizerState;
 
+		ID3D11Buffer* _perObjectConstantBuffer;
+		ID3D11Buffer* _materialConstantBuffer;
+
 		Shader* _defaultShader;
 
 		int _width;
@@ -47,6 +71,9 @@ namespace TinyEngine
 
 		DirectX::XMFLOAT4 _clearColor;
 
+		std::chrono::high_resolution_clock::time_point _startTime;
+		std::chrono::high_resolution_clock::time_point _lastTime;
+
 	public:
 		TinyEngineGame(int width, int height, const char* Title);
 		~TinyEngineGame();
@@ -54,10 +81,13 @@ namespace TinyEngine
 		void Run();
 
 	protected:
-		virtual void OnInit() = 0;
-		virtual bool OnUpdate() = 0;
+		float GetWidth() const;
+		float GetHeight() const;
 
-		void DrawMesh(Mesh* mesh, Shader* shader = nullptr);
+		virtual void OnInit() = 0;
+		virtual bool OnUpdate(float time, float delta) = 0;
+
+		void DrawMesh(Mesh* mesh, Camera* camera, const DirectX::XMMATRIX& world, Shader* shader = nullptr);
 
 	private:
 		static LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM lparam);
@@ -73,9 +103,56 @@ namespace TinyEngine
 	};
 
 	struct VertexStandard {
+	public:
 		DirectX::XMFLOAT3 position;
 		DirectX::XMFLOAT2 texcoord;
 		DirectX::XMFLOAT3 normal;
+
+	public:
+		VertexStandard(DirectX::XMFLOAT3 position, DirectX::XMFLOAT2 texcoord, DirectX::XMFLOAT3 normal);
+	};
+
+	class Camera
+	{
+	protected:
+		DirectX::XMFLOAT3 _position;
+
+		bool _dirtyView = true;
+		bool _dirtyProj = true;
+
+		DirectX::XMMATRIX _viewMatrix;
+		DirectX::XMMATRIX _projectionMatrix;
+	public:
+		virtual DirectX::XMMATRIX GetView();
+		virtual DirectX::XMMATRIX GetProjection();
+
+		void SetPosition(DirectX::XMFLOAT3 position);
+
+	protected:
+		virtual void RebuildView() = 0;
+		virtual void RebuildProjection() = 0;
+	};
+
+	class PerspectiveCamera :
+		public Camera
+	{
+	private:
+		DirectX::XMFLOAT3 _target;
+		float _fov = DirectX::XM_PIDIV2;
+		float _aspectRatio;
+		float _near = 0.01f;
+		float _far = 1000.0f;
+
+	public:
+		void SetFov(float fov);
+		void SetAspectRatio(float aspectRatio);
+
+		void LookAt(DirectX::XMFLOAT3 target);
+		
+	protected:
+		// Inherited via Camera
+		virtual void RebuildView() override;
+		virtual void RebuildProjection() override;
 	};
 
 	class RenderResource
@@ -90,25 +167,26 @@ namespace TinyEngine
 	{
 		friend class TinyEngineGame;
 	private:
+		struct MeshPart {
+			ID3D11Buffer* indexBuffer;
+			unsigned int size;
+			unsigned int baseVertex;
+			Material* mat;
+		};
 
 		ID3D11Buffer* _vertexBuffer;
 		unsigned int _numVertices;
 
-		std::vector<ID3D11Buffer*> _indexBuffers;
-		std::vector<unsigned int> _indexBufferSizes;
+		std::vector<MeshPart> _parts;
 
 	public:
 		Mesh();
-		Mesh(const char* path);
 		~Mesh();
 
 		Mesh(const Mesh&) = delete;
 
 		void SetVertices(VertexStandard* vertices, unsigned int numVertices);
-		void AddIndexBuffer(unsigned int* indices, unsigned int numIndices);
-
-	private:
-		void ParseObjFace(const char* face, int* p, int* t, int* n);
+		void AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex, Material* mat = nullptr);
 	};
 
 	class Shader :
@@ -122,6 +200,7 @@ namespace TinyEngine
 
 	public:
 		Shader(const char* vertexShaderBytecode, size_t vertexShaderSize, const char* pixelShaderBytecode, size_t pixelShaderSize, D3D11_INPUT_ELEMENT_DESC* inputDesc, unsigned int inputDescCount);
+		Shader(const char* vertexPath, const char* fragmentPath, D3D11_INPUT_ELEMENT_DESC* inputDesc, unsigned int inputDescCount);
 		~Shader();
 
 		Shader(const Shader&) = delete;
@@ -140,6 +219,14 @@ namespace TinyEngine
 	//	Shader* LoadShader(const char* path);
 	//	Mesh* LoadMesh(const char* path);
 	//};
+
+	struct PerObjectCb
+	{
+	public:
+		DirectX::XMMATRIX world;
+		DirectX::XMMATRIX view;
+		DirectX::XMMATRIX projection;
+	};
 }
 
 #ifdef TINY_ENGINE_IMPLEMENTATION
@@ -160,8 +247,8 @@ namespace TinyEngine
 #include <d3dcompiler.h>
 #include <string>
 #include <sstream>
-#include <map>
 #include <vector>
+#include <filesystem>
 
 using std::cerr;
 using std::endl;
@@ -172,6 +259,7 @@ using std::stringstream;
 using std::map;
 using std::vector;
 using std::getline;
+using std::chrono::high_resolution_clock;
 
 using namespace DirectX;
 
@@ -179,13 +267,167 @@ namespace TinyEngine
 {
 	TinyEngineGame* RenderResource::_game;
 
-	TinyEngine::Shader::Shader(const char* vertexShaderBytecode, size_t vertexShaderSize, const char* pixelShaderBytecode, size_t pixelShaderSize, D3D11_INPUT_ELEMENT_DESC* inputDescs, unsigned int inputDescCount)
+	Material::Material()
+	{
+		ambient = {};
+		diffuse = {};
+		specular = {};
+		specularExponent = {};
+		transparency = {};
+	}
+
+	Material::Material(XMFLOAT3 ambient, XMFLOAT3 diffuse, XMFLOAT3 specular, float specularExponent, float transparency)
+	{
+		this->ambient = ambient;
+		this->diffuse = diffuse;
+		this->specular = specular;
+		this->specularExponent = specularExponent;
+		this->transparency = transparency;
+	}
+	
+	TinyEngine::VertexStandard::VertexStandard(XMFLOAT3 position, XMFLOAT2 texcoord, XMFLOAT3 normal)
+	{
+		this->position = position;
+		this->texcoord = texcoord;
+		this->normal = normal;
+	}
+
+	//	-	-	-	-	-	-	-	-	-	-	-	-	Camera	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
+
+	inline XMMATRIX Camera::GetView()
+	{
+		if (_dirtyView)
+		{
+			RebuildView();
+			_dirtyView = false;
+		}
+
+		return _viewMatrix;
+	}
+
+	inline XMMATRIX Camera::GetProjection()
+	{
+		if (_dirtyProj)
+		{
+			RebuildProjection();
+			_dirtyProj = false;
+		}
+
+		return _projectionMatrix;
+	}
+
+	void TinyEngine::Camera::SetPosition(XMFLOAT3 position)
+	{
+		_position = position;
+		_dirtyView = true;
+	}
+
+	//	-	-	-	-	-	-	-	-	-	-	-	PerspectiveCamera	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
+	
+	inline void PerspectiveCamera::SetFov(float fov)
+	{
+		_fov = fov;
+		_dirtyProj = true;
+	}
+
+	inline void PerspectiveCamera::SetAspectRatio(float aspectRatio)
+	{
+		_aspectRatio = aspectRatio;
+		_dirtyProj = true;
+	}
+
+	inline void PerspectiveCamera::LookAt(XMFLOAT3 target)
+	{
+		_target = target;
+		_dirtyView = true;
+	}
+
+	inline void PerspectiveCamera::RebuildView()
+	{
+		XMFLOAT3 up(0.0f, 1.0f, 0.0f);
+		_viewMatrix = XMMatrixLookAtLH(XMLoadFloat3(&_position), XMLoadFloat3(&_target), XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f));
+	}
+
+	inline void PerspectiveCamera::RebuildProjection()
+	{
+		_projectionMatrix = XMMatrixPerspectiveFovLH(_fov, _aspectRatio, _near, _far);
+	}
+
+	//	-	-	-	-	-	-	-	-	-	-	-	Shader	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
+
+	inline Shader::Shader(const char* vertexShaderBytecode, size_t vertexShaderSize, const char* pixelShaderBytecode, size_t pixelShaderSize, D3D11_INPUT_ELEMENT_DESC* inputDescs, unsigned int inputDescCount)
 	{
 		auto device = _game->_device;
-		device->CreateVertexShader(vertexShaderBytecode, vertexShaderSize, nullptr, &_vertexShader);
-		device->CreatePixelShader(pixelShaderBytecode, pixelShaderSize, nullptr, &_pixelShader);
 
-		device->CreateInputLayout(inputDescs, inputDescCount, vertexShaderBytecode, vertexShaderSize, &_inputLayout);
+		HRESULT hr;
+		hr = device->CreateVertexShader(vertexShaderBytecode, vertexShaderSize, nullptr, &_vertexShader);
+		CHECK_HR(hr, "Failed to create Vertex Shader.");
+		hr = device->CreatePixelShader(pixelShaderBytecode, pixelShaderSize, nullptr, &_pixelShader);
+		CHECK_HR(hr, "Failed to create Pixel Shader.");
+		
+		hr = device->CreateInputLayout(inputDescs, inputDescCount, vertexShaderBytecode, vertexShaderSize, &_inputLayout);
+		CHECK_HR(hr, "Failed to create Input Layout.");
+	}
+
+	inline Shader::Shader(const char* vertexPath, const char* pixelPath, D3D11_INPUT_ELEMENT_DESC* inputDescs, unsigned int inputDescCount)
+	{
+		auto device = _game->_device;
+
+		size_t vsLength, psLength;
+		char* vsBytes = nullptr;
+		char* psBytes = nullptr;
+
+		const auto openFlags = std::ios::in | std::ios::binary | std::ios::ate;
+
+		ifstream file(vertexPath, openFlags);
+
+		if (file.is_open())
+		{
+			auto size = file.tellg();
+
+			vsLength = static_cast<size_t>(size);
+			vsBytes = new char[vsLength];
+
+			file.seekg(0, std::ios::beg);
+			file.read(vsBytes, size);
+
+			file.close();
+		}
+		else
+		{
+			PRINT_ERROR("Could not open Vertex Shader at: " << vertexPath);
+		}
+
+		file.open(pixelPath, openFlags);
+
+		if (file.is_open())
+		{
+			auto size = file.tellg();
+
+			psLength = static_cast<size_t>(size);
+			psBytes = new char[psLength];
+
+			file.seekg(0, std::ios::beg);
+			file.read(psBytes, size);
+
+			file.close();
+		}
+		else
+		{
+			PRINT_ERROR("Could not open Pixel Shader at: " << pixelPath);
+		}
+
+		HRESULT hr;
+		hr = device->CreateVertexShader(vsBytes, vsLength, nullptr, &_vertexShader);
+		CHECK_HR(hr, "Failed to create Vertex Shader.");
+		hr = device->CreatePixelShader(psBytes, psLength, nullptr, &_pixelShader);
+		CHECK_HR(hr, "Failed to create Pixel Shader.");
+
+		hr = device->CreateInputLayout(inputDescs, inputDescCount, vsBytes, vsLength, &_inputLayout);
+		CHECK_HR(hr, "Failed to create Input Layout.");
+
+		delete[] vsBytes;
+		delete[] psBytes;
 	}
 
 	inline Shader::~Shader()
@@ -195,153 +437,19 @@ namespace TinyEngine
 		SAFE_RELEASE(_inputLayout);
 	}
 
+	//	-	-	-	-	-	-	-	-	-	-	-	Mesh	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
+
 	inline Mesh::Mesh(): _numVertices(0), _vertexBuffer(nullptr)
 	{
 
-	}
-
-	// This should absolutely not be the responsibility of the engine. This should go in a TinyEngineAssets extension library.
-	inline Mesh::Mesh(const char* path): _numVertices(0), _vertexBuffer(nullptr)
-	{
-		struct ObjData {
-			vector<XMFLOAT3> positions;
-			vector<XMFLOAT2> texcoords;
-			vector<XMFLOAT3> normals;
-			vector<vector<VertexStandard>> faces;
-		};
-
-		map<string, ObjData*> objMap;
-
-		// Load mesh at this location.
-		ifstream file(path);
-
-		if (file.is_open())
-		{
-			string line;
-			ObjData* currentObj = nullptr;
-			while (std::getline(file, line))
-			{
-				stringstream lineStream(line);
-				string instruction;
-
-				lineStream >> instruction;
-				if (instruction == "#")
-				{
-					continue;
-				}
-				else if (instruction == "o")
-				{
-					string name;
-					lineStream >> name;
-					objMap[name] = new ObjData();
-					currentObj = objMap[name];
-				}
-				else if (instruction == "v")
-				{
-					float x, y, z;
-					lineStream >> x >> y >> z;
-					currentObj->positions.emplace_back(x, y, z);
-				}
-				else if (instruction == "vt")
-				{
-					float u, v, w;
-					lineStream >> u >> v >> w;
-
-					if (!w) PRINT_ERROR("Mesh with 3 component texcoords is not supported.");
-
-					currentObj->texcoords.emplace_back(u, v);
-				}
-				else if (instruction == "vn")
-				{
-					float i, j, k;
-					lineStream >> i >> j >> k;
-					currentObj->normals.emplace_back(i, j, k);
-				}
-				else if (instruction == "f")
-				{
-					int positions[4];
-					int texcoords[4];
-					int normals[4];
-
-					// Populate pos, tex, norm with data from face slash separated values.
-					string faceString;
-					int index = 0;
-					while (index < 4)
-					{
-						lineStream >> faceString;
-						if (faceString == "") break;
-						ParseObjFace(faceString.c_str(), &positions[index], &texcoords[index], &normals[index]);
-						index++;
-					}
-
-					std::vector<VertexStandard> face;
-					face.push_back({currentObj->positions[positions[0] - 1], currentObj->texcoords[texcoords[0] - 1], currentObj->normals[normals[0] - 1]});
-					face.push_back({currentObj->positions[positions[1] - 1], currentObj->texcoords[texcoords[1] - 1], currentObj->normals[normals[1] - 1]});
-					face.push_back({currentObj->positions[positions[2] - 1], currentObj->texcoords[texcoords[2] - 1], currentObj->normals[normals[2] - 1]});
-
-					if (index > 3)
-					{
-						face.push_back({currentObj->positions[positions[3] - 1], currentObj->texcoords[texcoords[3] - 1], currentObj->normals[normals[3] - 1]});
-					}
-
-					currentObj->faces.push_back(face);
-				}
-			}
-		}
-		else
-		{
-			PRINT_ERROR("Could not open file: " << path);
-		}
-
-		if (objMap.size())
-		{
-			std::vector<VertexStandard> vertices;
-			unsigned int lastVertex = 0;
-
-			// Build Vbuffer and Ibuffers
-			for (auto it = objMap.begin(); it != objMap.end(); it++)
-			{
-				auto obj = it->second;
-
-				vector<unsigned int> indices;
-
-				for (const auto& face : obj->faces)
-				{
-					vertices.insert(vertices.begin(), face.begin(), face.end());
-
-					indices.push_back(lastVertex);
-					indices.push_back(lastVertex + 1);
-					indices.push_back(lastVertex + 2);
-
-					unsigned int increment = 3;
-
-					if (face.size() == 4)
-					{
-						indices.push_back(lastVertex + 0);
-						indices.push_back(lastVertex + 2);
-						indices.push_back(lastVertex + 3);
-
-						increment++;
-					}
-
-					lastVertex += increment;
-				}
-
-				AddIndexBuffer(indices.data(), static_cast<unsigned int>(indices.size()));
-
-				delete objMap[it->first];
-			}
-
-			SetVertices(vertices.data(), static_cast<unsigned int>(vertices.size()));
-		}
 	}
 
 	inline Mesh::~Mesh()
 	{
 		SAFE_RELEASE(_vertexBuffer);
 
-		for (size_t i = 0, l = _indexBuffers.size(); i < l; i++) {
-			SAFE_RELEASE(_indexBuffers[i]);
+		for (size_t i = 0, l = _parts.size(); i < l; i++) {
+			SAFE_RELEASE(_parts[i].indexBuffer);
 		}
 	}
 
@@ -365,7 +473,7 @@ namespace TinyEngine
 		CHECK_HR(hr, "Failed to create Vertex Buffer.");
 	}
 
-	inline void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices)
+	inline void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex, Material* mat)
 	{
 		D3D11_BUFFER_DESC bd;
 		bd.ByteWidth = numIndices * sizeof(unsigned int);
@@ -384,20 +492,12 @@ namespace TinyEngine
 		hr = _game->_device->CreateBuffer(&bd, &pData, &indexBuffer);
 		CHECK_HR(hr, "Failed to create Vertex Buffer.");
 
-		_indexBuffers.push_back(indexBuffer);
-		_indexBufferSizes.push_back(numIndices);
+		_parts.push_back({ indexBuffer, numIndices, baseVertex, mat });
 	}
 
-	inline void Mesh::ParseObjFace(const char* face, int* p, int* t, int* n)
-	{
-		stringstream faceStream(face);
-		string elem;
-		if (getline(faceStream, elem, '/')) *p = std::stoi(elem);
-		if (getline(faceStream, elem, '/')) *t = std::stoi(elem);
-		faceStream >> *n;
-	}
+	//	-	-	-	-	-	-	-	-	-	-	TinyEngineGame	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
 
-	inline void TinyEngineGame::DrawMesh(Mesh* mesh, Shader * shader)
+	inline void TinyEngineGame::DrawMesh(Mesh* mesh, Camera* camera, const DirectX::XMMATRIX& world, Shader * shader)
 	{
 		if (shader == nullptr)
 		{
@@ -418,14 +518,42 @@ namespace TinyEngine
 		context->VSSetShader(shader->_vertexShader, nullptr, 0);
 		context->PSSetShader(shader->_pixelShader, nullptr, 0);
 
-		if (mesh->_indexBuffers.size())
+		D3D11_MAPPED_SUBRESOURCE mappedCbuffer;
+		context->Map(_perObjectConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, NULL, &mappedCbuffer);
+
+		PerObjectCb* buffer = reinterpret_cast<PerObjectCb*>(mappedCbuffer.pData);
+		buffer->world = XMMatrixTranspose(world);
+		buffer->view = XMMatrixTranspose(camera->GetView());
+		buffer->projection = XMMatrixTranspose(camera->GetProjection());
+
+		context->Unmap(_perObjectConstantBuffer, 0);
+
+		context->VSSetConstantBuffers(0, 1, &_perObjectConstantBuffer);
+		context->PSSetConstantBuffers(0, 1, &_perObjectConstantBuffer);
+
+		if (mesh->_parts.size())
 		{
-			for (int i = 0; i < mesh->_indexBuffers.size(); i++)
+			for (int i = 0; i < mesh->_parts.size(); i++)
 			{
-				context->IASetIndexBuffer(mesh->_indexBuffers[i], DXGI_FORMAT_R32_UINT, 0);
+				auto part = mesh->_parts[i];
+
+				context->Map(_materialConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, NULL, &mappedCbuffer);
+				Material* mat = reinterpret_cast<Material*>(mappedCbuffer.pData);
+				mat->ambient = part.mat->ambient;
+				mat->diffuse = part.mat->diffuse;
+				mat->specular = part.mat->specular;
+				mat->specularExponent = part.mat->specularExponent;
+				mat->transparency = part.mat->transparency;
+
+				context->Unmap(_materialConstantBuffer, 0);
+
+				context->VSSetConstantBuffers(1, 1, &_materialConstantBuffer);
+				context->PSSetConstantBuffers(1, 1, &_materialConstantBuffer);
+
+				context->IASetIndexBuffer(part.indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
 				// could maybe use this if the index buffer only draws from vert n. optimize the space slightly.
-				context->DrawIndexed(mesh->_indexBufferSizes[i], 0, 0);
+				context->DrawIndexed(part.size, 0, part.baseVertex);
 			}
 		}
 		else
@@ -471,12 +599,15 @@ namespace TinyEngine
 		InitD3D();
 
 		RenderResource::_game = this;
+		_lastTime = _startTime = high_resolution_clock::now();
 	}
 
 	inline TinyEngineGame::~TinyEngineGame()
 	{
 		SAFE_DELETE(_defaultShader);
 		
+		SAFE_RELEASE(_perObjectConstantBuffer);
+		SAFE_RELEASE(_materialConstantBuffer);
 		SAFE_RELEASE(_defaultRasterizerState);
 		SAFE_RELEASE(_depthStencilView);
 		SAFE_RELEASE(_backBufferView);
@@ -618,15 +749,15 @@ namespace TinyEngine
 
 		D3D11_RASTERIZER_DESC rd = {};
 		rd.FillMode = D3D11_FILL_SOLID;
-		rd.CullMode = D3D11_CULL_NONE;
+		rd.CullMode = D3D11_CULL_BACK;
 		rd.FrontCounterClockwise = false;
 		rd.DepthBias = 0;
-		rd.DepthBiasClamp = 1.0f;
+		rd.DepthBiasClamp = 0.0f;
 		rd.SlopeScaledDepthBias = 0;
-		rd.DepthClipEnable = true;
+		rd.DepthClipEnable = false;
 		rd.ScissorEnable = false;
 		rd.MultisampleEnable = false;
-		rd.AntialiasedLineEnable = true;
+		rd.AntialiasedLineEnable = false;
 
 		hr = _device->CreateRasterizerState(&rd, &_defaultRasterizerState);
 		// create sound stuff.
@@ -715,7 +846,7 @@ namespace TinyEngine
 		viewport.Width = static_cast<float>(_width);
 		viewport.Height = static_cast<float>(_height);
 		viewport.MinDepth = 0;
-		viewport.MaxDepth = 0;
+		viewport.MaxDepth = 1.0;
 
 		_immediateContext->RSSetViewports(1, &viewport);
 	}
@@ -724,63 +855,40 @@ namespace TinyEngine
 	{
 		isRunning = true;
 
-		const auto vSource = ""
-			"struct VS_IN { float3 position: POSITION; float2 texcoord: TEXCOORD; float3 normal: NORMAL; };\n"
-			"struct VS_OUT { float4 position: SV_POSITION; float3 normal: NORMAL; };\n"
-			"VS_OUT main(VS_IN i)\n"
-			"{"
-			"	VS_OUT o;\n"
-			"	o.normal = i.normal;\n"
-			"	o.position = float4(i.position, 1.0);\n"
-			"	return o;\n"
-			"}\n";
-
-		const auto pSource = ""
-			"struct VS_OUT { float4 position: SV_POSITION; float3 normal: NORMAL; };\n"
-			"float4 main(VS_OUT i): SV_TARGET\n"
-			"{\n"
-			"	return float4(i.normal.xyz, 1.0);\n"
-			"}\n";
-
 		D3D11_INPUT_ELEMENT_DESC inputDescs[3] = {
 			{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA},
 			{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA},
 			{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA}
 		};
 
-		ID3D10Blob* errors[2];
-		ID3D10Blob* vsBlob = nullptr;
-		ID3D10Blob* psBlob = nullptr;
+		_defaultShader = new Shader("./assets/shaders/defaultVertexShader.cso", "./assets/shaders/defaultPixelShader.cso", inputDescs, 3);
 
-		unsigned int compileFlags = 0;
+		// Per Frame CB
+		D3D11_BUFFER_DESC bd = {};
+		bd.ByteWidth = sizeof(PerObjectCb);
+		bd.Usage = D3D11_USAGE_DYNAMIC;
+		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		bd.MiscFlags = NULL;
+		bd.StructureByteStride = 0;
 
-#if DEBUG || _DEBUG
-		compileFlags |= D3DCOMPILE_DEBUG;
-#endif
+		PerObjectCb emptyBuffer = {};
 
-		auto include = D3D_COMPILE_STANDARD_FILE_INCLUDE;
-		HRESULT hr = D3DCompile(vSource, strlen(vSource), nullptr, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", compileFlags, NULL, &vsBlob, &errors[0]);
-		CHECK_HR(hr, "VS Could not be compiled.")
-		hr = D3DCompile(pSource, strlen(pSource), nullptr, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", compileFlags, NULL, &psBlob, &errors[1]);
-		CHECK_HR(hr, "PS Could not be compiled.")
+		D3D11_SUBRESOURCE_DATA initialData;
+		initialData.pSysMem = &emptyBuffer;
 
-		for (int i = 0; i < 2; i++)
-		{
-			auto error = errors[i];
-			if (error)
-			{
-				PRINT_ERROR("Shader compilation failed");
-				PRINT_ERROR(static_cast<LPCSTR>(error->GetBufferPointer()));
+		HRESULT hr = _device->CreateBuffer(&bd, &initialData, &_perObjectConstantBuffer);
+		CHECK_HR(hr, "Failed to create PerFrame CB.");
 
-				error->Release();
-				error = nullptr;
-			}
-		}
+		// Material CB
+		bd.ByteWidth = sizeof(Material);
 
-		_defaultShader = new Shader((char*)vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), (char*)psBlob->GetBufferPointer(), psBlob->GetBufferSize(), inputDescs, 3);
+		Material emptyMaterial = {};
 
-		SAFE_RELEASE(vsBlob);
-		SAFE_RELEASE(psBlob);
+		initialData.pSysMem = &emptyMaterial;
+
+		hr = _device->CreateBuffer(&bd, &initialData, &_materialConstantBuffer);
+		CHECK_HR(hr, "Failed to create Material CB.");
 
 		OnInit();
 
@@ -802,10 +910,25 @@ namespace TinyEngine
 				, 1.0f, 0);
 			_immediateContext->ClearRenderTargetView(_backBufferView, reinterpret_cast<float*>(&_clearColor));
 
-			isRunning = OnUpdate();
+			auto thisTime = high_resolution_clock::now();
+			auto elapsed = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(thisTime - _startTime).count()) / 1000.0f;
+			auto delta = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(thisTime - _lastTime).count()) / 1000.0f;
 
+			isRunning = OnUpdate(elapsed, delta);
+
+			_lastTime = thisTime;
 			SwapBuffers();
 		}
+	}
+
+	inline float TinyEngineGame::GetWidth() const
+	{
+		return static_cast<float>(_width);
+	}
+
+	inline float TinyEngineGame::GetHeight() const
+	{
+		return static_cast<float>(_height);
 	}
 }
 
