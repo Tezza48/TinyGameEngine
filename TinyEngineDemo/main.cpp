@@ -1,8 +1,14 @@
 #define TINY_ENGINE_IMPLEMENTATION
 #define TINY_ENGINE_LAZY_LIBS
-
 #include "TinyEngine.h"
+#undef TINY_ENGINE_IMPLEMENTATION
+
+#define OBJL_CONSOLE_OUTPUT
+#include <DirectXColors.h>
+
+#pragma warning(disable: 4067 4244)
 #include "vendor/OBJ_Loader.h";
+#pragma warning(default: 4067 4244)
 
 #define SAFE_DELETE(ptr) if (ptr) { delete ptr; ptr = nullptr; }
 
@@ -16,12 +22,13 @@ private:
 	vector<Mesh*> _meshes;
 	vector<Material*> _materials;
 	PerspectiveCamera _camera;
+	objl::Loader* _objLoader;
 
 public:
-	Game() : TinyEngineGame(1280, 720, "Game")
+	Game() : TinyEngineGame(1280, 720, "Game"), _objLoader(nullptr)
 	{
-		_camera.LookAt({0.0f, 0.0f, 0.0f});
-		_camera.SetAspectRatio(GetWidth() / GetHeight());
+		_camera.SetPosition({ 0.0f, 0.0f, -2.0f });
+		_camera.LookAt({ 0.0f, 0.0f, 0.0f });
 	}
 
 	~Game()
@@ -37,22 +44,30 @@ public:
 			delete mat;
 			mat = nullptr;
 		}
+
+		SAFE_DELETE(_objLoader);
 	}
 
 private:
-	void OnInit() override
+	vector<Mesh*> LoadMeshes(const char* path)
 	{
-		objl::Loader loader;
-		if (loader.LoadFile("./assets/mesh/planet.obj"))
+		if (!_objLoader)
+		{
+			_objLoader = new objl::Loader();
+		}
+
+		vector<Mesh*> meshes;
+
+		if (_objLoader->LoadFile(path))
 		{
 			vector<VertexStandard> vertices;
 
 			auto mesh = new Mesh();
-			_meshes.push_back(mesh);
+			meshes.push_back(mesh);
 
-			for (objl::Mesh& meshData : loader.LoadedMeshes)
+			for (objl::Mesh& meshData : _objLoader->LoadedMeshes)
 			{
-				unsigned int base = vertices.size();
+				auto base = vertices.size();
 				for (const auto& objlVertex : meshData.Vertices)
 				{
 					XMFLOAT3 pos(&objlVertex.Position.X);
@@ -73,20 +88,42 @@ private:
 
 				_materials.push_back(mat);
 
-				mesh->AddIndexBuffer(meshData.Indices.data(), meshData.Indices.size(), base, mat);
+				mesh->AddIndexBuffer(meshData.Indices.data(), static_cast<unsigned int>(meshData.Indices.size()), static_cast<unsigned int>(base), mat);
 			}
 
-			mesh->SetVertices(vertices.data(), vertices.size());
+			mesh->SetVertices(vertices.data(), static_cast<unsigned int>(vertices.size()));
 		}
+
+		return meshes;
+	}
+		
+	void OnInit() override
+	{
+		const auto& sphMesh = LoadMeshes("./assets/mesh/sphere.obj");
+		_meshes.insert(_meshes.end(), sphMesh.begin(), sphMesh.end());
+
+		const auto& groundMesh = LoadMeshes("./assets/mesh/groundPlane.obj");
+		_meshes.insert(_meshes.end(), groundMesh.begin(), groundMesh.end());
+
+		_lights[0].position = { -1.0f, 1.0f, -1.0f };
+		_lights[0].color = { 255.0f / 255.0f, 248.0f / 255.0f, 219.0f / 255.0f, 0.8f };
+
+		_lights[1].position = { 1.0f, 0.5f, -1.0f };
+		_lights[1].color = { 219.0f / 255.0f, 252.0f / 255.0f, 255.0f / 255.0f, 0.2f };
+
+		_lights[2].position = { 1.0f, 0.5f, 1.0f };
+		_lights[2].color = { 219.0f / 255.0f, 252.0f / 255.0f, 255.0f / 255.0f, 0.05f };
 	}
 
 	bool OnUpdate(float time, float delta) override
 	{
-		_camera.SetPosition({ sinf(time) * 4.0f, 1.0f, cosf(time) * 4.0f });
+		_camera.SetPosition({ sinf(time) * 2.0f, 1.0f, cosf(time) * 2.0f });
+		_camera.SetAspectRatio(GetWidth() / GetHeight());
 
 		for (auto* mesh : _meshes)
 		{
-			DrawMesh(mesh, &_camera, XMMatrixIdentity());
+			XMMATRIX world = XMMatrixIdentity();
+			DrawMesh(mesh, &_camera, world);
 		}
 
 		return true;

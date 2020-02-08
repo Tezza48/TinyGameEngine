@@ -34,4 +34,7 @@
     <FxCompile Include="DefaultVertexShader.hlsl" />
     <FxCompile Include="DefaultPixelShader.hlsl" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="DefaultShader.hlsli" />
+  </ItemGroup>
 </Project>

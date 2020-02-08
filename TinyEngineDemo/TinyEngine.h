@@ -22,30 +22,64 @@ namespace TinyEngine
 	class Mesh;
 	class Shader;
 	class Camera;
+	class TinyEngineGame;
+
+	template<typename T>
+	class ConstantBuffer;
+
+	class RenderResource
+	{
+		friend class TinyEngineGame;
+	protected:
+		static TinyEngineGame* _game;
+	};
 
 	struct Material {
 	public:
-		DirectX::XMFLOAT3 ambient;
-		float _pad0;
-		DirectX::XMFLOAT3 diffuse;
-		float _pad1;
 		DirectX::XMFLOAT3 specular;
-		float _pad2;
 		float specularExponent;
+		DirectX::XMFLOAT3 ambient;
 		float transparency;
-		float _pad3[2];
+		DirectX::XMFLOAT3 diffuse;
 
 		Material();
 		Material(DirectX::XMFLOAT3 ambient, DirectX::XMFLOAT3 diffuse, DirectX::XMFLOAT3 specular, float specularExponent, float transparency);
+	};
+
+	struct Light
+	{
+		DirectX::XMFLOAT4 color;
+		DirectX::XMFLOAT3 position;
+		float _pad;
+	};
+
+	struct PerObjectCb
+	{
+	public:
+		Light lights[3];
+		DirectX::XMMATRIX world;
+		DirectX::XMMATRIX worldInverseTranspose;
+		DirectX::XMMATRIX view;
+		DirectX::XMMATRIX projection;
+		DirectX::XMFLOAT3 eyePosW;
+		float _pad = 0.0f;
+	};
+
+	struct PerMaterialCB
+	{
+		Material mat;
+		float _pad = 0.0f;
 	};
 
 	class TinyEngineGame
 	{
 		friend class Mesh;
 		friend class Shader;
+		friend class ConstantBuffer<PerMaterialCB>;
+		friend class ConstantBuffer<PerObjectCb>;
 	public:
 	protected:
-		//Assets _assets;
+		Light _lights[3];
 
 	private:
 		HWND _window = 0;
@@ -60,8 +94,8 @@ namespace TinyEngine
 
 		ID3D11RasterizerState* _defaultRasterizerState;
 
-		ID3D11Buffer* _perObjectConstantBuffer;
-		ID3D11Buffer* _materialConstantBuffer;
+		ConstantBuffer<PerObjectCb>* _perObjectConstantBuffer;
+		ConstantBuffer<PerMaterialCB>* _materialConstantBuffer;
 
 		Shader* _defaultShader;
 
@@ -84,11 +118,12 @@ namespace TinyEngine
 		float GetWidth() const;
 		float GetHeight() const;
 
+		void SetClearColor(DirectX::XMFLOAT4 color);
+
 		virtual void OnInit() = 0;
 		virtual bool OnUpdate(float time, float delta) = 0;
 
 		void DrawMesh(Mesh* mesh, Camera* camera, const DirectX::XMMATRIX& world, Shader* shader = nullptr);
-
 	private:
 		static LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM lparam);
 
@@ -101,6 +136,62 @@ namespace TinyEngine
 		void SwapBuffers();
 		void BindCurrentBackBufferView();
 	};
+
+	template<typename T>
+	class ConstantBuffer :
+		public RenderResource
+	{
+		friend class TinyEngineGame;
+	private:
+		ID3D11Buffer* _buffer;
+
+	public:
+		ConstantBuffer();
+		~ConstantBuffer();
+
+		void Upload(const T& data);
+	};
+
+	template<typename T>
+	inline ConstantBuffer<T>::ConstantBuffer()
+	{
+		D3D11_BUFFER_DESC desc = {};
+		desc.ByteWidth = sizeof(T);
+		desc.Usage = D3D11_USAGE_DYNAMIC;
+		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		desc.MiscFlags = NULL;
+		desc.StructureByteStride = 0;
+
+		T emptyBuffer = {};
+
+		D3D11_SUBRESOURCE_DATA initialData;
+		initialData.pSysMem = &emptyBuffer;
+
+		HRESULT hr = _game->_device->CreateBuffer(&desc, &initialData, &_buffer);
+		CHECK_HR(hr, "Failed to create Constant Buffer");
+	}
+
+	template<typename T>
+	inline ConstantBuffer<T>::~ConstantBuffer()
+	{
+		if (_buffer) {
+			_buffer->Release();
+			_buffer = nullptr;
+		}
+	}
+
+	template<typename T>
+	inline void ConstantBuffer<T>::Upload(const T& data)
+	{
+		D3D11_MAPPED_SUBRESOURCE mappedData;
+
+		_game->_immediateContext->Map(_buffer, 0, D3D11_MAP_WRITE_DISCARD, NULL, &mappedData);
+
+		memcpy(mappedData.pData, &data, sizeof(T));
+
+		_game->_immediateContext->Unmap(_buffer, 0);
+	}
 
 	struct VertexStandard {
 	public:
@@ -127,6 +218,7 @@ namespace TinyEngine
 		virtual DirectX::XMMATRIX GetProjection();
 
 		void SetPosition(DirectX::XMFLOAT3 position);
+		DirectX::XMFLOAT3 GetPosition();
 
 	protected:
 		virtual void RebuildView() = 0;
@@ -153,13 +245,6 @@ namespace TinyEngine
 		// Inherited via Camera
 		virtual void RebuildView() override;
 		virtual void RebuildProjection() override;
-	};
-
-	class RenderResource
-	{
-		friend class TinyEngineGame;
-	protected:
-		static TinyEngineGame* _game;
 	};
 
 	class Mesh :
@@ -219,14 +304,6 @@ namespace TinyEngine
 	//	Shader* LoadShader(const char* path);
 	//	Mesh* LoadMesh(const char* path);
 	//};
-
-	struct PerObjectCb
-	{
-	public:
-		DirectX::XMMATRIX world;
-		DirectX::XMMATRIX view;
-		DirectX::XMMATRIX projection;
-	};
 }
 
 #ifdef TINY_ENGINE_IMPLEMENTATION
@@ -267,6 +344,8 @@ namespace TinyEngine
 {
 	TinyEngineGame* RenderResource::_game;
 
+	//	-	-	-	-	-	-	-	-	-	-	-	-	Material	-	-	-	-	-	-	-	-	-	-	-	-	-	-
+
 	Material::Material()
 	{
 		ambient = {};
@@ -284,6 +363,8 @@ namespace TinyEngine
 		this->specularExponent = specularExponent;
 		this->transparency = transparency;
 	}
+
+	//	-	-	-	-	-	-	-	-	-	-	-	-	VertexStandard	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
 	
 	TinyEngine::VertexStandard::VertexStandard(XMFLOAT3 position, XMFLOAT2 texcoord, XMFLOAT3 normal)
 	{
@@ -294,7 +375,7 @@ namespace TinyEngine
 
 	//	-	-	-	-	-	-	-	-	-	-	-	-	Camera	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
 
-	inline XMMATRIX Camera::GetView()
+	XMMATRIX Camera::GetView()
 	{
 		if (_dirtyView)
 		{
@@ -305,7 +386,7 @@ namespace TinyEngine
 		return _viewMatrix;
 	}
 
-	inline XMMATRIX Camera::GetProjection()
+	XMMATRIX Camera::GetProjection()
 	{
 		if (_dirtyProj)
 		{
@@ -322,40 +403,45 @@ namespace TinyEngine
 		_dirtyView = true;
 	}
 
+	DirectX::XMFLOAT3 Camera::GetPosition()
+	{
+		return _position;
+	}
+
 	//	-	-	-	-	-	-	-	-	-	-	-	PerspectiveCamera	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
 	
-	inline void PerspectiveCamera::SetFov(float fov)
+	void PerspectiveCamera::SetFov(float fov)
 	{
 		_fov = fov;
 		_dirtyProj = true;
 	}
 
-	inline void PerspectiveCamera::SetAspectRatio(float aspectRatio)
+	void PerspectiveCamera::SetAspectRatio(float aspectRatio)
 	{
 		_aspectRatio = aspectRatio;
 		_dirtyProj = true;
 	}
 
-	inline void PerspectiveCamera::LookAt(XMFLOAT3 target)
+	void PerspectiveCamera::LookAt(XMFLOAT3 target)
 	{
 		_target = target;
 		_dirtyView = true;
 	}
 
-	inline void PerspectiveCamera::RebuildView()
+	void PerspectiveCamera::RebuildView()
 	{
 		XMFLOAT3 up(0.0f, 1.0f, 0.0f);
 		_viewMatrix = XMMatrixLookAtLH(XMLoadFloat3(&_position), XMLoadFloat3(&_target), XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f));
 	}
 
-	inline void PerspectiveCamera::RebuildProjection()
+	void PerspectiveCamera::RebuildProjection()
 	{
 		_projectionMatrix = XMMatrixPerspectiveFovLH(_fov, _aspectRatio, _near, _far);
 	}
 
 	//	-	-	-	-	-	-	-	-	-	-	-	Shader	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
 
-	inline Shader::Shader(const char* vertexShaderBytecode, size_t vertexShaderSize, const char* pixelShaderBytecode, size_t pixelShaderSize, D3D11_INPUT_ELEMENT_DESC* inputDescs, unsigned int inputDescCount)
+	Shader::Shader(const char* vertexShaderBytecode, size_t vertexShaderSize, const char* pixelShaderBytecode, size_t pixelShaderSize, D3D11_INPUT_ELEMENT_DESC* inputDescs, unsigned int inputDescCount)
 	{
 		auto device = _game->_device;
 
@@ -369,7 +455,7 @@ namespace TinyEngine
 		CHECK_HR(hr, "Failed to create Input Layout.");
 	}
 
-	inline Shader::Shader(const char* vertexPath, const char* pixelPath, D3D11_INPUT_ELEMENT_DESC* inputDescs, unsigned int inputDescCount)
+	Shader::Shader(const char* vertexPath, const char* pixelPath, D3D11_INPUT_ELEMENT_DESC* inputDescs, unsigned int inputDescCount)
 	{
 		auto device = _game->_device;
 
@@ -430,7 +516,7 @@ namespace TinyEngine
 		delete[] psBytes;
 	}
 
-	inline Shader::~Shader()
+	Shader::~Shader()
 	{
 		SAFE_RELEASE(_vertexShader);
 		SAFE_RELEASE(_pixelShader);
@@ -439,12 +525,12 @@ namespace TinyEngine
 
 	//	-	-	-	-	-	-	-	-	-	-	-	Mesh	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
 
-	inline Mesh::Mesh(): _numVertices(0), _vertexBuffer(nullptr)
+	Mesh::Mesh(): _numVertices(0), _vertexBuffer(nullptr)
 	{
 
 	}
 
-	inline Mesh::~Mesh()
+	Mesh::~Mesh()
 	{
 		SAFE_RELEASE(_vertexBuffer);
 
@@ -453,7 +539,7 @@ namespace TinyEngine
 		}
 	}
 
-	inline void Mesh::SetVertices(VertexStandard* vertices, unsigned int numVertices)
+	void Mesh::SetVertices(VertexStandard* vertices, unsigned int numVertices)
 	{
 		_numVertices = numVertices;
 
@@ -473,7 +559,7 @@ namespace TinyEngine
 		CHECK_HR(hr, "Failed to create Vertex Buffer.");
 	}
 
-	inline void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex, Material* mat)
+	void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex, Material* mat)
 	{
 		D3D11_BUFFER_DESC bd;
 		bd.ByteWidth = numIndices * sizeof(unsigned int);
@@ -497,7 +583,7 @@ namespace TinyEngine
 
 	//	-	-	-	-	-	-	-	-	-	-	TinyEngineGame	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-	-
 
-	inline void TinyEngineGame::DrawMesh(Mesh* mesh, Camera* camera, const DirectX::XMMATRIX& world, Shader * shader)
+	void TinyEngineGame::DrawMesh(Mesh* mesh, Camera* camera, const DirectX::XMMATRIX& world, Shader * shader)
 	{
 		if (shader == nullptr)
 		{
@@ -518,18 +604,22 @@ namespace TinyEngine
 		context->VSSetShader(shader->_vertexShader, nullptr, 0);
 		context->PSSetShader(shader->_pixelShader, nullptr, 0);
 
-		D3D11_MAPPED_SUBRESOURCE mappedCbuffer;
-		context->Map(_perObjectConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, NULL, &mappedCbuffer);
+		PerObjectCb objCb;
+		objCb.world = XMMatrixTranspose(world);
 
-		PerObjectCb* buffer = reinterpret_cast<PerObjectCb*>(mappedCbuffer.pData);
-		buffer->world = XMMatrixTranspose(world);
-		buffer->view = XMMatrixTranspose(camera->GetView());
-		buffer->projection = XMMatrixTranspose(camera->GetProjection());
+		XMVECTOR det = XMMatrixDeterminant(world);
+		objCb.worldInverseTranspose = XMMatrixInverse(&det, world);
 
-		context->Unmap(_perObjectConstantBuffer, 0);
+		objCb.view = XMMatrixTranspose(camera->GetView());
+		objCb.projection = XMMatrixTranspose(camera->GetProjection());
+		objCb.eyePosW = camera->GetPosition();
 
-		context->VSSetConstantBuffers(0, 1, &_perObjectConstantBuffer);
-		context->PSSetConstantBuffers(0, 1, &_perObjectConstantBuffer);
+		memcpy(objCb.lights, _lights, sizeof(_lights));
+
+		_perObjectConstantBuffer->Upload(objCb);
+
+		context->VSSetConstantBuffers(0, 1, &_perObjectConstantBuffer->_buffer);
+		context->PSSetConstantBuffers(0, 1, &_perObjectConstantBuffer->_buffer);
 
 		if (mesh->_parts.size())
 		{
@@ -537,18 +627,13 @@ namespace TinyEngine
 			{
 				auto part = mesh->_parts[i];
 
-				context->Map(_materialConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, NULL, &mappedCbuffer);
-				Material* mat = reinterpret_cast<Material*>(mappedCbuffer.pData);
-				mat->ambient = part.mat->ambient;
-				mat->diffuse = part.mat->diffuse;
-				mat->specular = part.mat->specular;
-				mat->specularExponent = part.mat->specularExponent;
-				mat->transparency = part.mat->transparency;
+				PerMaterialCB matCb;
+				matCb.mat = *part.mat;
 
-				context->Unmap(_materialConstantBuffer, 0);
+				_materialConstantBuffer->Upload(matCb);
 
-				context->VSSetConstantBuffers(1, 1, &_materialConstantBuffer);
-				context->PSSetConstantBuffers(1, 1, &_materialConstantBuffer);
+				context->VSSetConstantBuffers(1, 1, &_materialConstantBuffer->_buffer);
+				context->PSSetConstantBuffers(1, 1, &_materialConstantBuffer->_buffer);
 
 				context->IASetIndexBuffer(part.indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
@@ -562,7 +647,7 @@ namespace TinyEngine
 		}
 	}
 
-	inline LRESULT CALLBACK TinyEngineGame::WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM lparam)
+	LRESULT CALLBACK TinyEngineGame::WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM lparam)
 	{
 		static TinyEngineGame* engine;
 
@@ -591,7 +676,7 @@ namespace TinyEngine
 		return DefWindowProc(hwnd, uMsg, wparam, lparam);;
 	}
 
-	inline TinyEngineGame::TinyEngineGame(int width, int height, const char* title)
+	TinyEngineGame::TinyEngineGame(int width, int height, const char* title)
 		: _width(width), _height(height), _title(title)
 	{
 		InitWin32();
@@ -602,12 +687,12 @@ namespace TinyEngine
 		_lastTime = _startTime = high_resolution_clock::now();
 	}
 
-	inline TinyEngineGame::~TinyEngineGame()
+	TinyEngineGame::~TinyEngineGame()
 	{
 		SAFE_DELETE(_defaultShader);
+		SAFE_DELETE(_materialConstantBuffer);
+		SAFE_DELETE(_perObjectConstantBuffer);
 		
-		SAFE_RELEASE(_perObjectConstantBuffer);
-		SAFE_RELEASE(_materialConstantBuffer);
 		SAFE_RELEASE(_defaultRasterizerState);
 		SAFE_RELEASE(_depthStencilView);
 		SAFE_RELEASE(_backBufferView);
@@ -616,7 +701,7 @@ namespace TinyEngine
 		SAFE_RELEASE(_device);
 	}
 
-	inline void TinyEngineGame::InitWin32()
+	void TinyEngineGame::InitWin32()
 	{
 		WNDCLASS wc = {};
 		wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
@@ -658,7 +743,7 @@ namespace TinyEngine
 		}
 	}
 
-	inline void TinyEngineGame::InitD3D()
+	void TinyEngineGame::InitD3D()
 	{
 		UINT createDeviceFlags = {};
 		createDeviceFlags |= D3D11_CREATE_DEVICE_SINGLETHREADED;
@@ -765,11 +850,14 @@ namespace TinyEngine
 		UpdateViewport();
 	}
 
-	inline void TinyEngineGame::OnResize(int width, int height)
+	void TinyEngineGame::OnResize(int width, int height)
 	{
 		if (!isRunning) {
 			return;
 		}
+
+		_width = width;
+		_height = height;
 
 		SAFE_RELEASE(_backBufferView);
 		SAFE_RELEASE(_depthStencilView);
@@ -810,7 +898,7 @@ namespace TinyEngine
 		UpdateViewport();
 	}
 
-	inline void TinyEngineGame::SwapBuffers()
+	void TinyEngineGame::SwapBuffers()
 	{
 		// Swap buffers
 		_swapChain->Present(0, 0);
@@ -823,7 +911,7 @@ namespace TinyEngine
 		_immediateContext->OMSetRenderTargets(1, &_backBufferView, _depthStencilView);
 	}
 
-	inline void TinyEngineGame::BindCurrentBackBufferView()
+	void TinyEngineGame::BindCurrentBackBufferView()
 	{
 		ID3D11Texture2D* backBuffer = nullptr;
 
@@ -838,7 +926,7 @@ namespace TinyEngine
 		backBuffer = nullptr;
 	}
 
-	inline void TinyEngineGame::UpdateViewport()
+	void TinyEngineGame::UpdateViewport()
 	{
 		D3D11_VIEWPORT viewport = {};
 		viewport.TopLeftX = 0;
@@ -851,7 +939,7 @@ namespace TinyEngine
 		_immediateContext->RSSetViewports(1, &viewport);
 	}
 
-	inline void TinyEngineGame::Run()
+	void TinyEngineGame::Run()
 	{
 		isRunning = true;
 
@@ -863,32 +951,8 @@ namespace TinyEngine
 
 		_defaultShader = new Shader("./assets/shaders/defaultVertexShader.cso", "./assets/shaders/defaultPixelShader.cso", inputDescs, 3);
 
-		// Per Frame CB
-		D3D11_BUFFER_DESC bd = {};
-		bd.ByteWidth = sizeof(PerObjectCb);
-		bd.Usage = D3D11_USAGE_DYNAMIC;
-		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-		bd.MiscFlags = NULL;
-		bd.StructureByteStride = 0;
-
-		PerObjectCb emptyBuffer = {};
-
-		D3D11_SUBRESOURCE_DATA initialData;
-		initialData.pSysMem = &emptyBuffer;
-
-		HRESULT hr = _device->CreateBuffer(&bd, &initialData, &_perObjectConstantBuffer);
-		CHECK_HR(hr, "Failed to create PerFrame CB.");
-
-		// Material CB
-		bd.ByteWidth = sizeof(Material);
-
-		Material emptyMaterial = {};
-
-		initialData.pSysMem = &emptyMaterial;
-
-		hr = _device->CreateBuffer(&bd, &initialData, &_materialConstantBuffer);
-		CHECK_HR(hr, "Failed to create Material CB.");
+		_perObjectConstantBuffer = new ConstantBuffer<PerObjectCb>();
+		_materialConstantBuffer = new ConstantBuffer<PerMaterialCB>();
 
 		OnInit();
 
@@ -921,14 +985,19 @@ namespace TinyEngine
 		}
 	}
 
-	inline float TinyEngineGame::GetWidth() const
+	float TinyEngineGame::GetWidth() const
 	{
 		return static_cast<float>(_width);
 	}
 
-	inline float TinyEngineGame::GetHeight() const
+	float TinyEngineGame::GetHeight() const
 	{
 		return static_cast<float>(_height);
+	}
+
+	void TinyEngineGame::SetClearColor(XMFLOAT4 color)
+	{
+		_clearColor = color;
 	}
 }
 

@@ -1,31 +1,34 @@
-cbuffer CBMaterial : register(b1)
-{
-	float3 Mat_Ambient;
-	float _pad0;
-	float3 Mat_Diffuse;
-	float _pad1;
-	float3 Mat_Specular;
-	float _pad2;
-	float Mat_SpecularExponent;
-	float Mat_Transparency;
-	float Mat__pad[2];
-};
+#include "DefaultShader.hlsli"
 
-cbuffer CbPerObject : register(b0)
+float3 BlinnPhong(Light light, float3 normal, float3 toEye, Material mat)
 {
-	float4x4 World;
-	float4x4 View;
-	float4x4 Projection;
-};
+	light.Position = normalize(light.Position);
+	float nDotL = dot(normal, light.Position);
+	float intensity = saturate(nDotL);
 
-struct VS_OUT
-{ 
-	float4 position: SV_POSITION; 
-	float3 normal: NORMAL;
-};
+	float3 diffuse = intensity * mat.Diffuse * light.Color.xyz * light.Color.w;
 
-float4 main(VS_OUT i) : SV_TARGET
+	float3 h = normalize(light.Position + toEye);
+
+	float nDotH = dot(normal, h);
+	intensity = pow(saturate(nDotH), mat.SpecularExponent);
+
+	float3 specular = intensity * mat.Specular * light.Color.xyz * light.Color.w;
+
+	return diffuse + specular;
+}
+
+float4 main(PS_IN i) : SV_TARGET
 {
-	float nDotL = dot(i.normal, normalize(float3(1.0f, 0.1f, 0.0f)));
-	return float4(Mat_Diffuse.rgb * nDotL, 1.0);
+	float3 color;
+	float3 lightDir = -normalize(float3(0.0f, -1.0f, 1.0f));
+	float3 toEye = normalize(EyePositionW - i.positionW);
+
+	for (int j = 0; j < 3; j++)
+	{
+		color += BlinnPhong(SceneLights[j], normalize(i.normalW), toEye, Mat);
+	}
+
+
+	return float4(pow(color, 1/2.2), 1.0); // Gamma correction
 }
