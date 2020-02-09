@@ -23,6 +23,7 @@ namespace TinyEngine
 	class Shader;
 	class Camera;
 	class TinyEngineGame;
+	class Texture;
 
 	template<typename T>
 	class ConstantBuffer;
@@ -41,22 +42,24 @@ namespace TinyEngine
 		DirectX::XMFLOAT3 ambient;
 		float transparency;
 		DirectX::XMFLOAT3 diffuse;
+		Texture* diffuseTexture;
 
 		Material();
-		Material(DirectX::XMFLOAT3 ambient, DirectX::XMFLOAT3 diffuse, DirectX::XMFLOAT3 specular, float specularExponent, float transparency);
+		Material(DirectX::XMFLOAT3 ambient, DirectX::XMFLOAT3 diffuse, DirectX::XMFLOAT3 specular, float specularExponent, float transparency, Texture* diffuseTexture = nullptr);
 	};
 
-	struct Light
+	struct DirectionLight
 	{
 		DirectX::XMFLOAT4 color;
-		DirectX::XMFLOAT3 position;
+		DirectX::XMFLOAT3 direction;
 		float _pad;
 	};
 
 	struct PerObjectCb
 	{
 	public:
-		Light lights[3];
+		DirectionLight lights[3];
+		DirectX::XMFLOAT4 ambientLight;
 		DirectX::XMMATRIX world;
 		DirectX::XMMATRIX worldInverseTranspose;
 		DirectX::XMMATRIX view;
@@ -67,19 +70,23 @@ namespace TinyEngine
 
 	struct PerMaterialCB
 	{
-		Material mat;
+		struct
+		{
+			DirectX::XMFLOAT3 specular;
+			float specularExponent;
+			DirectX::XMFLOAT3 ambient;
+			float transparency;
+			DirectX::XMFLOAT3 diffuse;
+		} mat;
 		float _pad = 0.0f;
 	};
 
 	class TinyEngineGame
 	{
-		friend class Mesh;
-		friend class Shader;
-		friend class ConstantBuffer<PerMaterialCB>;
-		friend class ConstantBuffer<PerObjectCb>;
 	public:
 	protected:
-		Light _lights[3];
+		DirectionLight _lights[3];
+		DirectX::XMFLOAT4 _ambientLight;
 
 	private:
 		HWND _window = 0;
@@ -93,6 +100,8 @@ namespace TinyEngine
 		ID3D11DepthStencilView* _depthStencilView;
 
 		ID3D11RasterizerState* _defaultRasterizerState;
+
+		ID3D11SamplerState* _defaultSamplerState;
 
 		ConstantBuffer<PerObjectCb>* _perObjectConstantBuffer;
 		ConstantBuffer<PerMaterialCB>* _materialConstantBuffer;
@@ -111,6 +120,9 @@ namespace TinyEngine
 	public:
 		TinyEngineGame(int width, int height, const char* Title);
 		~TinyEngineGame();
+
+		ID3D11Device* GetDevice();
+		ID3D11DeviceContext* GetImmediateContext();
 
 		void Run();
 
@@ -168,7 +180,7 @@ namespace TinyEngine
 		D3D11_SUBRESOURCE_DATA initialData;
 		initialData.pSysMem = &emptyBuffer;
 
-		HRESULT hr = _game->_device->CreateBuffer(&desc, &initialData, &_buffer);
+		HRESULT hr = _game->GetDevice()->CreateBuffer(&desc, &initialData, &_buffer);
 		CHECK_HR(hr, "Failed to create Constant Buffer");
 	}
 
@@ -186,11 +198,13 @@ namespace TinyEngine
 	{
 		D3D11_MAPPED_SUBRESOURCE mappedData;
 
-		_game->_immediateContext->Map(_buffer, 0, D3D11_MAP_WRITE_DISCARD, NULL, &mappedData);
+		auto context = _game->GetImmediateContext();
+
+		context->Map(_buffer, 0, D3D11_MAP_WRITE_DISCARD, NULL, &mappedData);
 
 		memcpy(mappedData.pData, &data, sizeof(T));
 
-		_game->_immediateContext->Unmap(_buffer, 0);
+		context->Unmap(_buffer, 0);
 	}
 
 	struct VertexStandard {
@@ -291,19 +305,21 @@ namespace TinyEngine
 		Shader(const Shader&) = delete;
 	};
 
-	//class Input {
-	//
-	//};
-	//
-	//class Scene {
-	//
-	//};
-	//
-	//class Assets {
-	//public:
-	//	Shader* LoadShader(const char* path);
-	//	Mesh* LoadMesh(const char* path);
-	//};
+	class Texture :
+		RenderResource
+	{
+		friend class TinyEngineGame;
+	private:
+		ID3D11ShaderResourceView* _textureView;
+
+	public:
+		Texture(const unsigned char* data, int width, int height);
+
+		Texture() = delete;
+		Texture(const Texture&) = delete;
+		~Texture();
+	};
+
 }
 
 #ifdef TINY_ENGINE_IMPLEMENTATION
@@ -344,6 +360,52 @@ namespace TinyEngine
 {
 	TinyEngineGame* RenderResource::_game;
 
+	Texture::Texture(const unsigned char* data, int width, int height)
+	{
+		D3D11_TEXTURE2D_DESC desc = {};
+		desc.Width = width;
+		desc.Height = height;
+		desc.MipLevels = 0;
+		desc.ArraySize = 1;
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+		desc.CPUAccessFlags = DXGI_CPU_ACCESS_NONE;
+		desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+
+		auto device = _game->GetDevice();
+		auto context = _game->GetImmediateContext();
+
+		ID3D11Texture2D* texture;
+
+		HRESULT hr = device->CreateTexture2D(&desc, nullptr, &texture);
+		CHECK_HR(hr, "Failed to Create Texture2D");
+
+		unsigned int rowPitch = width * 4 * sizeof(unsigned char);
+
+		context->UpdateSubresource(texture, 0, nullptr, data, rowPitch, 0);
+		
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+		srvDesc.Format = desc.Format;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.Texture2D.MipLevels = -1;
+
+		hr = device->CreateShaderResourceView(texture, &srvDesc, &_textureView);
+
+		context->GenerateMips(_textureView);
+
+		SAFE_RELEASE(texture);
+	}
+
+	Texture::~Texture()
+	{
+		SAFE_RELEASE(_textureView);
+	}
+
+
 	//	-	-	-	-	-	-	-	-	-	-	-	-	Material	-	-	-	-	-	-	-	-	-	-	-	-	-	-
 
 	Material::Material()
@@ -353,12 +415,14 @@ namespace TinyEngine
 		specular = {};
 		specularExponent = {};
 		transparency = {};
+		diffuseTexture = nullptr;
 	}
 
-	Material::Material(XMFLOAT3 ambient, XMFLOAT3 diffuse, XMFLOAT3 specular, float specularExponent, float transparency)
+	Material::Material(DirectX::XMFLOAT3 ambient, DirectX::XMFLOAT3 diffuse, DirectX::XMFLOAT3 specular, float specularExponent, float transparency, Texture* diffuseTexture)
 	{
 		this->ambient = ambient;
 		this->diffuse = diffuse;
+		this->diffuseTexture = diffuseTexture;
 		this->specular = specular;
 		this->specularExponent = specularExponent;
 		this->transparency = transparency;
@@ -443,7 +507,7 @@ namespace TinyEngine
 
 	Shader::Shader(const char* vertexShaderBytecode, size_t vertexShaderSize, const char* pixelShaderBytecode, size_t pixelShaderSize, D3D11_INPUT_ELEMENT_DESC* inputDescs, unsigned int inputDescCount)
 	{
-		auto device = _game->_device;
+		auto device = _game->GetDevice();
 
 		HRESULT hr;
 		hr = device->CreateVertexShader(vertexShaderBytecode, vertexShaderSize, nullptr, &_vertexShader);
@@ -457,7 +521,7 @@ namespace TinyEngine
 
 	Shader::Shader(const char* vertexPath, const char* pixelPath, D3D11_INPUT_ELEMENT_DESC* inputDescs, unsigned int inputDescCount)
 	{
-		auto device = _game->_device;
+		auto device = _game->GetDevice();
 
 		size_t vsLength, psLength;
 		char* vsBytes = nullptr;
@@ -555,7 +619,7 @@ namespace TinyEngine
 		pData.pSysMem = vertices;
 
 		HRESULT hr;
-		hr = _game->_device->CreateBuffer(&bd, &pData, &_vertexBuffer);
+		hr = _game->GetDevice()->CreateBuffer(&bd, &pData, &_vertexBuffer);
 		CHECK_HR(hr, "Failed to create Vertex Buffer.");
 	}
 
@@ -575,7 +639,7 @@ namespace TinyEngine
 		ID3D11Buffer* indexBuffer;
 
 		HRESULT hr;
-		hr = _game->_device->CreateBuffer(&bd, &pData, &indexBuffer);
+		hr = _game->GetDevice()->CreateBuffer(&bd, &pData, &indexBuffer);
 		CHECK_HR(hr, "Failed to create Vertex Buffer.");
 
 		_parts.push_back({ indexBuffer, numIndices, baseVertex, mat });
@@ -604,7 +668,11 @@ namespace TinyEngine
 		context->VSSetShader(shader->_vertexShader, nullptr, 0);
 		context->PSSetShader(shader->_pixelShader, nullptr, 0);
 
+		context->PSSetSamplers(0, 1, &_defaultSamplerState);
+
 		PerObjectCb objCb;
+		memcpy(objCb.lights, _lights, sizeof(_lights));
+		objCb.ambientLight = _ambientLight;
 		objCb.world = XMMatrixTranspose(world);
 
 		XMVECTOR det = XMMatrixDeterminant(world);
@@ -614,7 +682,6 @@ namespace TinyEngine
 		objCb.projection = XMMatrixTranspose(camera->GetProjection());
 		objCb.eyePosW = camera->GetPosition();
 
-		memcpy(objCb.lights, _lights, sizeof(_lights));
 
 		_perObjectConstantBuffer->Upload(objCb);
 
@@ -628,12 +695,27 @@ namespace TinyEngine
 				auto part = mesh->_parts[i];
 
 				PerMaterialCB matCb;
-				matCb.mat = *part.mat;
+				matCb.mat.diffuse = part.mat->diffuse;
+				matCb.mat.ambient = part.mat->ambient;
+				matCb.mat.specular = part.mat->specular;
+				matCb.mat.specularExponent = part.mat->specularExponent;
+				matCb.mat.transparency = part.mat->transparency;
 
 				_materialConstantBuffer->Upload(matCb);
 
 				context->VSSetConstantBuffers(1, 1, &_materialConstantBuffer->_buffer);
 				context->PSSetConstantBuffers(1, 1, &_materialConstantBuffer->_buffer);
+
+				const auto& tex = part.mat->diffuseTexture;
+				if (tex)
+				{
+					context->PSSetShaderResources(0, 1, &part.mat->diffuseTexture->_textureView);
+				}
+				else
+				{
+					ID3D11ShaderResourceView* nullSRV = { nullptr };
+					context->PSSetShaderResources(0, 1, &nullSRV);
+				}
 
 				context->IASetIndexBuffer(part.indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
@@ -693,6 +775,7 @@ namespace TinyEngine
 		SAFE_DELETE(_materialConstantBuffer);
 		SAFE_DELETE(_perObjectConstantBuffer);
 		
+		SAFE_RELEASE(_defaultSamplerState);
 		SAFE_RELEASE(_defaultRasterizerState);
 		SAFE_RELEASE(_depthStencilView);
 		SAFE_RELEASE(_backBufferView);
@@ -847,6 +930,24 @@ namespace TinyEngine
 		hr = _device->CreateRasterizerState(&rd, &_defaultRasterizerState);
 		// create sound stuff.
 
+		D3D11_SAMPLER_DESC samplerDesc;
+		samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+		samplerDesc.MipLODBias = 0.0f;
+		samplerDesc.MaxAnisotropy = 1;
+		samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+		samplerDesc.BorderColor[0] = 0;
+		samplerDesc.BorderColor[1] = 0;
+		samplerDesc.BorderColor[2] = 0;
+		samplerDesc.BorderColor[3] = 0;
+		samplerDesc.MinLOD = 0;
+		samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+		hr = _device->CreateSamplerState(&samplerDesc, &_defaultSamplerState);
+		CHECK_HR(hr, "Failed to create Sampler State");
+
 		UpdateViewport();
 	}
 
@@ -949,7 +1050,7 @@ namespace TinyEngine
 			{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA}
 		};
 
-		_defaultShader = new Shader("./assets/shaders/defaultVertexShader.cso", "./assets/shaders/defaultPixelShader.cso", inputDescs, 3);
+		_defaultShader = new Shader("./assets/shader/defaultVertexShader.cso", "./assets/shader/defaultPixelShader.cso", inputDescs, 3);
 
 		_perObjectConstantBuffer = new ConstantBuffer<PerObjectCb>();
 		_materialConstantBuffer = new ConstantBuffer<PerMaterialCB>();
@@ -983,6 +1084,16 @@ namespace TinyEngine
 			_lastTime = thisTime;
 			SwapBuffers();
 		}
+	}
+
+	inline ID3D11Device* TinyEngineGame::GetDevice()
+	{
+		return _device;
+	}
+
+	inline ID3D11DeviceContext* TinyEngineGame::GetImmediateContext()
+	{
+		return _immediateContext;
 	}
 
 	float TinyEngineGame::GetWidth() const

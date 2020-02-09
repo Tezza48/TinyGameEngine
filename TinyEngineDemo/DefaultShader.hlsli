@@ -7,10 +7,10 @@ struct Material
 	float3 Diffuse;
 };
 
-struct Light
+struct DirectionLight
 {
 	float4 Color;
-	float3 Position;
+	float3 Direction;
 	float _pad;
 };
 
@@ -22,7 +22,8 @@ cbuffer CBMaterial : register(b1)
 
 cbuffer CbPerObject : register(b0)
 {
-	Light SceneLights[3];
+	DirectionLight DirectionLights[3];
+	float4 AmbientLight;
 	float4x4 World;
 	float4x4 WorldInverseTranspose;
 	float4x4 View;
@@ -43,4 +44,5 @@ typedef struct VS_OUT
 	float4 positionH: SV_POSITION;
 	float3 positionW: POSITION;
 	float3 normalW: NORMAL;
+	float2 texcoord: TEXCOORD;
 } PS_IN;

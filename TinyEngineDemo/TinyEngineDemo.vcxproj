@@ -87,7 +87,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <FxCompile>
-      <ObjectFileOutput>$(ProjectDir)assets\shaders\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput>$(ProjectDir)assets\shader\%(Filename).cso</ObjectFileOutput>
       <ShaderModel>5.0</ShaderModel>
     </FxCompile>
   </ItemDefinitionGroup>
