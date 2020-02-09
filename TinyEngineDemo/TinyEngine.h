@@ -43,6 +43,7 @@ namespace TinyEngine
 		float transparency;
 		DirectX::XMFLOAT3 diffuse;
 		Texture* diffuseTexture;
+		Texture* specularTexture;
 
 		Material();
 		Material(DirectX::XMFLOAT3 ambient, DirectX::XMFLOAT3 diffuse, DirectX::XMFLOAT3 specular, float specularExponent, float transparency, Texture* diffuseTexture = nullptr);
@@ -136,6 +137,7 @@ namespace TinyEngine
 		virtual bool OnUpdate(float time, float delta) = 0;
 
 		void DrawMesh(Mesh* mesh, Camera* camera, const DirectX::XMMATRIX& world, Shader* shader = nullptr);
+		// TODO WT: void DrawTexture(Texture* texture, DirectX::XMFLOAT4 rect, Shader* shader = nullptr);
 	private:
 		static LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM lparam);
 
@@ -313,9 +315,9 @@ namespace TinyEngine
 		ID3D11ShaderResourceView* _textureView;
 
 	public:
+		Texture();
 		Texture(const unsigned char* data, int width, int height);
 
-		Texture() = delete;
 		Texture(const Texture&) = delete;
 		~Texture();
 	};
@@ -359,6 +361,11 @@ using namespace DirectX;
 namespace TinyEngine
 {
 	TinyEngineGame* RenderResource::_game;
+
+	Texture::Texture(): _textureView(nullptr)
+	{
+		
+	}
 
 	Texture::Texture(const unsigned char* data, int width, int height)
 	{
@@ -703,19 +710,15 @@ namespace TinyEngine
 
 				_materialConstantBuffer->Upload(matCb);
 
+				ID3D11ShaderResourceView* textureViews[2] = {
+					part.mat->diffuseTexture->_textureView,
+					part.mat->specularTexture->_textureView
+				};
+
+				context->PSSetShaderResources(0, 2, textureViews);
+
 				context->VSSetConstantBuffers(1, 1, &_materialConstantBuffer->_buffer);
 				context->PSSetConstantBuffers(1, 1, &_materialConstantBuffer->_buffer);
-
-				const auto& tex = part.mat->diffuseTexture;
-				if (tex)
-				{
-					context->PSSetShaderResources(0, 1, &part.mat->diffuseTexture->_textureView);
-				}
-				else
-				{
-					ID3D11ShaderResourceView* nullSRV = { nullptr };
-					context->PSSetShaderResources(0, 1, &nullSRV);
-				}
 
 				context->IASetIndexBuffer(part.indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 

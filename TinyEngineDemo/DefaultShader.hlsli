@@ -14,6 +14,11 @@ struct DirectionLight
 	float _pad;
 };
 
+Texture2D DiffuseTexture : register(t0);
+Texture2D SpecularTexture : register(t1);
+
+SamplerState DefaultSampler : register(s0);
+
 cbuffer CBMaterial : register(b1)
 {
 	Material Mat;

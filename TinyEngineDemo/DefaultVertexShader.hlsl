@@ -10,8 +10,8 @@ VS_OUT main(VS_IN i)
 	float4 positionL = float4(i.positionL, 1.0);
 
 	o.positionH = mul(positionL, World);
-	o.positionH = mul(o.positionH, View);
 	o.positionW = o.positionH.xyz;
+	o.positionH = mul(o.positionH, View);
 	o.positionH = mul(o.positionH, Projection);
 	o.texcoord = i.texcoord;
 
