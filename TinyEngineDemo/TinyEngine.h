@@ -82,12 +82,61 @@ namespace TinyEngine
 		float _pad = 0.0f;
 	};
 
+	class InputManager
+	{
+	public:
+		enum class Key
+		{
+			N0 = 0x30,
+			N1,
+			N2,
+			N3,
+			N4,
+			N5,
+			N6,
+			N7,
+			N8,
+			N9,
+			A = 0x41,
+			B,
+			C,
+			D,
+			E,
+			F,
+			G,
+			H,
+			I,
+			J,
+			K,
+			L,
+			M,
+			N,
+			O,
+			P,
+			Q,
+			R,
+			S,
+			T,
+			U,
+			V,
+			W,
+			X,
+			Y,
+			Z,
+		};
+	public:
+		virtual void OnKeyPressed(Key key) = 0;
+		virtual void OnKeyReleased(Key key) = 0;
+	};
+
 	class TinyEngineGame
 	{
 	public:
 	protected:
 		DirectionLight _lights[3];
 		DirectX::XMFLOAT4 _ambientLight;
+
+		InputManager* _inputManager = nullptr;
 
 	private:
 		HWND _window = 0;
@@ -739,23 +788,57 @@ namespace TinyEngine
 		switch (uMsg)
 		{
 		case WM_CREATE:
+		{
 			engine = reinterpret_cast<TinyEngineGame*>(reinterpret_cast<LPCREATESTRUCT>(lparam)->lpCreateParams);
+
 			return 0;
+		}
 
 		case WM_CLOSE:
+		{
 			DestroyWindow(hwnd);
 			engine->isRunning = false;
+
 			return 0;
+		}
 
 		case WM_DESTROY:
+		{
 			PostQuitMessage(0);
+
 			return 0;
+		}
 
 		case WM_SIZE:
+		{
 			const auto width = LOWORD(lparam);
 			const auto height = HIWORD(lparam);
 			engine->OnResize(width, height);
 			return 0;
+		}
+
+		case WM_KEYDOWN:
+		{
+			if (engine->_inputManager && !((lparam >> 30) & 1)) // bit 30 indicates that the key was already pressed
+			{
+				engine->_inputManager->OnKeyPressed(static_cast<InputManager::Key>(wparam));
+
+				return 0;
+			}
+
+			break;
+		}
+			
+		case WM_KEYUP:
+		{
+			if (engine->_inputManager)
+			{
+				engine->_inputManager->OnKeyReleased(static_cast<InputManager::Key>(wparam));
+				return 0;
+			}
+
+			break;
+		}
 		}
 
 		return DefWindowProc(hwnd, uMsg, wparam, lparam);;

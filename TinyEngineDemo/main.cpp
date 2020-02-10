@@ -25,6 +25,22 @@ using std::vector;
 using std::map;
 using std::string;
 
+class Input :
+	public InputManager
+{
+protected:
+	// Inherited via InputManager
+	virtual void OnKeyPressed(Key key) override
+	{
+		cout << "Key Pressed " << (char)key << endl;
+	}
+
+	virtual void OnKeyReleased(Key key) override
+	{
+		cout << "Key Released " << (char)key << endl;
+	}
+};
+
 class Game
 	: public TinyEngineGame
 {
@@ -44,6 +60,8 @@ public:
 		_camera.LookAt({ 0.0f, 0.0f, 0.0f });
 
 		_nullTexture = new Texture();
+
+		_inputManager = new Input();
 	}
 
 	~Game()
@@ -68,6 +86,7 @@ public:
 
 		SAFE_DELETE(_objLoader);
 		SAFE_DELETE(_nullTexture);
+		SAFE_DELETE(_inputManager);
 	}
 
 private:
