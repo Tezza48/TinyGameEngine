@@ -81,6 +81,9 @@
     <FxCompile>
       <ObjectFileOutput>$(ProjectDir)assets\shader\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
+    <Link>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -94,6 +97,9 @@
       <ObjectFileOutput>$(ProjectDir)assets\shader\%(Filename).cso</ObjectFileOutput>
       <ShaderModel>5.0</ShaderModel>
     </FxCompile>
+    <Link>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -108,6 +114,7 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
       <ObjectFileOutput>$(ProjectDir)assets\shader\%(Filename).cso</ObjectFileOutput>
@@ -126,18 +133,45 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile>
       <ObjectFileOutput>$(ProjectDir)assets\shader\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Event.cpp" />
+    <ClCompile Include="Game.cpp" />
+    <ClCompile Include="BaseInput.cpp" />
+    <ClCompile Include="ICamera.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Material.cpp" />
+    <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="Subject.cpp" />
+    <ClCompile Include="VertexStandard.cpp" />
+    <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ConstantBuffer.h" />
+    <ClInclude Include="EngineEventType.h" />
+    <ClInclude Include="Event.h" />
+    <ClInclude Include="Game.h" />
+    <ClInclude Include="BaseInput.h" />
+    <ClInclude Include="ICamera.h" />
+    <ClInclude Include="IRenderer.h" />
+    <ClInclude Include="Key.h" />
+    <ClInclude Include="Material.h" />
+    <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Renderer.h" />
+    <ClInclude Include="Shader.h" />
+    <ClInclude Include="Subject.h" />
     <ClInclude Include="TinyEngine.h" />
     <ClInclude Include="vendor\OBJ_Loader.h" />
     <ClInclude Include="vendor\stb_image.h" />
+    <ClInclude Include="VertexStandard.h" />
+    <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="DefaultPixelShader.hlsl">
