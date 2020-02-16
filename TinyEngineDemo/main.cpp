@@ -16,6 +16,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <iostream>
 
 #define SAFE_DELETE(ptr) if (ptr) { delete ptr; ptr = nullptr; }
 
@@ -25,6 +26,8 @@ using namespace std::chrono;
 using std::vector;
 using std::map;
 using std::string;
+using std::cout;
+using std::endl;
 
 class DemoInput :
 	public OLD_InputManager
@@ -114,6 +117,77 @@ private:
 
 		return tex;
 	}
+	
+	vector<OLD_Mesh*> LoadMeshes(const char* path)
+	{
+		if (!_objLoader)
+		{
+			_objLoader = new objl::Loader();
+		}
+
+		vector<OLD_Mesh*> meshes;
+
+		if (_objLoader->LoadFile(path))
+		{
+			vector<OLD_VertexStandard> vertices;
+
+			auto mesh = new OLD_Mesh();
+			meshes.push_back(mesh);
+
+			for (objl::Mesh& meshData : _objLoader->LoadedMeshes)
+			{
+				auto base = vertices.size();
+				for (const auto& objlVertex : meshData.Vertices)
+				{
+					XMFLOAT3 pos(&objlVertex.Position.X);
+					XMFLOAT2 tex(&objlVertex.TextureCoordinate.X);
+					XMFLOAT3 norm(&objlVertex.Normal.X);
+
+					vertices.emplace_back(pos, tex, norm);
+				}
+
+				const auto& objlMat = meshData.MeshMaterial;
+
+				auto* mat = new OLD_Material{};
+				mat->ambient = XMFLOAT3(&objlMat.Ka.X);
+				mat->transparency = objlMat.d;
+
+				if (objlMat.map_Kd != "")
+				{
+					std::filesystem::path texPath(path);
+					texPath.remove_filename().append(objlMat.map_Kd);
+					mat->diffuseTexture = LoadTexture(texPath.string().c_str());
+				}
+				else
+				{
+					mat->diffuseTexture = _nullTexture;
+					mat->diffuse = XMFLOAT3(&objlMat.Kd.X);
+				}
+
+				if (objlMat.map_Ks != "")
+				{
+					std::filesystem::path texPath(path);
+					texPath.remove_filename().append(objlMat.map_Ks);
+					mat->specularTexture = LoadTexture(texPath.string().c_str());
+				}
+				else
+				{
+					mat->specularTexture = _nullTexture;
+					mat->specular = XMFLOAT3(&objlMat.Ks.X);
+					mat->specularExponent = objlMat.Ns;
+				}
+
+				_materials.push_back(mat);
+
+				mesh->AddIndexBuffer(meshData.Indices.data(), static_cast<unsigned int>(meshData.Indices.size()), static_cast<unsigned int>(base), mat);
+			}
+
+			mesh->SetVertices(vertices.data(), static_cast<unsigned int>(vertices.size()));
+		}
+
+		_meshes.insert(_meshes.end(), meshes.begin(), meshes.end());
+		return meshes;
+	}
 		
 	void OnInit() override
 	{
@@ -161,7 +235,7 @@ int main(int argc, char** argv)
 	DemoGame game;
 	game.Run();
 }
-#endif
+#else
 
 
 #pragma warning(disable: 4067 4244)
@@ -177,6 +251,13 @@ int main(int argc, char** argv)
 #include <string>
 #include "ICamera.h"
 #include "EngineEventType.h"
+#include "Texture.h"
+#include <unordered_map>
+#include <iostream>
+
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_FAILURE_USERMSG
+#include "vendor\stb_image.h"
 
 #ifdef TINY_ENGINE_EXPOSE_NATIVE
 #error "TINY_ENGINE_EXPOSE_NATIVE has leaked to main."
@@ -186,6 +267,11 @@ using std::vector;
 using TinyEngine::Mesh;
 using TinyEngine::Material;
 using TinyEngine::VertexStandard;
+using TinyEngine::Texture;
+using std::unordered_map;
+using std::string;
+using std::cout;
+using std::endl;
 
 using namespace DirectX;
 
@@ -257,6 +343,9 @@ private:
 	objl::Loader* _objLoader;
 	vector<Mesh*> _meshes;
 	vector<Material*> _materials;
+	unordered_map<string, Texture*> _textures;
+	Texture* _nullTexture;
+
 	Camera _camera;
 
 public:
@@ -266,11 +355,16 @@ public:
 		_camera.SetEyePosition({ 0.0f, 0.0f, -2.0f });
 		_camera.SetAspectRatio(static_cast<float>(GetWidth()) / static_cast<float>(GetHeight()));
 
+		_nullTexture = new Texture(GetRenderer());
+
 		AddObserver(_camera);
 	}
 
 	~DemoGame()
 	{
+		delete _nullTexture;
+		_nullTexture = nullptr;
+
 		for (auto* mesh : _meshes)
 		{
 			delete mesh;
@@ -283,12 +377,42 @@ public:
 			mat = nullptr;
 		}
 
+		for (auto textureKeyVal : _textures)
+		{
+			delete textureKeyVal.second;
+			textureKeyVal.second = nullptr;
+		}
+
 		// Lazy initialized so might not exist here if it's never used.
 		if (_objLoader)
 		{
 			delete _objLoader;
 			_objLoader = nullptr;
 		}
+	}
+	
+	Texture* LoadTexture(const char* path)
+	{
+		if (_textures[path])
+		{
+			return _textures[path];
+		}
+
+		int w, h, bpp;
+		unsigned char* texData = stbi_load(path, &w, &h, &bpp, STBI_rgb_alpha);
+
+		auto failure = stbi_failure_reason();
+		if (failure)
+		{
+			cout << "STB Failed to load Image: " << failure << endl;
+		}
+
+		Texture* tex = new Texture(GetRenderer(), texData, w, h);
+		_textures[path] = tex;
+
+		stbi_image_free(texData);
+
+		return tex;
 	}
 
 	vector<Mesh*> LoadMeshes(const char* path)
@@ -323,31 +447,31 @@ public:
 
 				const auto& objlMat = meshData.MeshMaterial;
 
-				auto* mat = new Material();
+				auto* mat = new Material {};
 				mat->ambient = XMFLOAT3(&objlMat.Ka.X);
 				mat->transparency = objlMat.d;
 
-				if (objlMat.map_Kd != "" && false)
+				if (objlMat.map_Kd != "")
 				{
 					std::filesystem::path texPath(path);
 					texPath.remove_filename().append(objlMat.map_Kd);
-					//mat->diffuseTexture = LoadTexture(texPath.string().c_str());
+					mat->diffuseTexture = LoadTexture(texPath.string().c_str());
 				}
 				else
 				{
-					//mat->diffuseTexture = _nullTexture;
+					mat->diffuseTexture = _nullTexture;
 					mat->diffuse = XMFLOAT3(&objlMat.Kd.X);
 				}
 
-				if (objlMat.map_Ks != "" && false)
+				if (objlMat.map_Ks != "")
 				{
 					std::filesystem::path texPath(path);
 					texPath.remove_filename().append(objlMat.map_Ks);
-					//mat->specularTexture = LoadTexture(texPath.string().c_str());
+					mat->specularTexture = LoadTexture(texPath.string().c_str());
 				}
 				else
 				{
-					//mat->specularTexture = _nullTexture;
+					mat->specularTexture = _nullTexture;
 					mat->specular = XMFLOAT3(&objlMat.Ks.X);
 					mat->specularExponent = objlMat.Ns;
 				}
@@ -414,3 +538,5 @@ int main(int argc, char** argv)
 
 	return 0;
 }
+
+#endif

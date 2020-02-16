@@ -1,22 +1,20 @@
 #pragma once
 
-#include<DirectXMath.h>
+#include <DirectXMath.h>
+#include "Texture.h"
 
 namespace TinyEngine
 {
 	struct Material
 	{
 	public:
-		DirectX::XMFLOAT3 specular;
-		float specularExponent;
-		DirectX::XMFLOAT3 ambient;
-		float transparency;
-		DirectX::XMFLOAT3 diffuse;
-		//Texture* diffuseTexture;
-		//Texture* specularTexture;
-
-		Material();
-		Material(DirectX::XMFLOAT3 ambient, DirectX::XMFLOAT3 diffuse, DirectX::XMFLOAT3 specular, float specularExponent, float transparency/*, OLD_Texture* diffuseTexture = nullptr*/);
+		DirectX::XMFLOAT3 specular = {};
+		float specularExponent = 0.0f;
+		DirectX::XMFLOAT3 ambient = {};
+		float transparency = 0.0f;
+		DirectX::XMFLOAT3 diffuse = {};
+		Texture* diffuseTexture;
+		Texture* specularTexture;
 	};
 }
 

@@ -373,7 +373,7 @@ namespace TinyEngine
 
 }
 
-#ifndef TINY_ENGINE_IMPLEMENTATION
+#ifdef TINY_ENGINE_IMPLEMENTATION
 
 #define SAFE_RELEASE(comptr) if (comptr) { comptr->Release(); comptr = nullptr; }
 #define SAFE_DELETE(ptr) if (ptr) { delete ptr; ptr = nullptr; }

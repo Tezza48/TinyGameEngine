@@ -265,6 +265,12 @@ void TinyEngine::Renderer::DrawMesh(Mesh* mesh, ICamera* camera, XMMATRIX world)
 			_perMaterialCB->Upload(matCb);
 
 			// set textures from material
+			ID3D11ShaderResourceView* textureViews[2] = {
+					part.mat->diffuseTexture->GetTextureView(),
+					part.mat->specularTexture->GetTextureView()
+			};
+
+			context->PSSetShaderResources(0, 2, textureViews);
 
 			{
 				auto buffer = _perMaterialCB->GetBuffer();
