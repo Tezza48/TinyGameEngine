@@ -169,7 +169,6 @@
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Subject.h" />
     <ClInclude Include="Texture.h" />
-    <ClInclude Include="TinyEngine.h" />
     <ClInclude Include="vendor\OBJ_Loader.h" />
     <ClInclude Include="vendor\stb_image.h" />
     <ClInclude Include="VertexStandard.h" />
