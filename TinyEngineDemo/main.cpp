@@ -279,7 +279,6 @@ public:
 			renderer->DrawMesh(mesh, &_camera, XMMatrixIdentity());
 		}
 	}
-
 };
 
 int main(int argc, char** argv)

@@ -1,11 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.902
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TinyEngineDemo", "TinyEngineDemo\TinyEngineDemo.vcxproj", "{689CBD12-3331-4A78-8A67-7DA5E2C5A79E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TinyEngine", "TinyEngine\TinyEngine.vcxitems", "{C0546E3F-262B-4037-9D49-8D5371580430}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		TinyEngine\TinyEngine.vcxitems*{689cbd12-3331-4a78-8a67-7da5e2c5a79e}*SharedItemsImports = 4
+		TinyEngine\TinyEngine.vcxitems*{c0546e3f-262b-4037-9d49-8d5371580430}*SharedItemsImports = 9
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
