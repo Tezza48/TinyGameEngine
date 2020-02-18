@@ -2,18 +2,18 @@
 #include "vendor/OBJ_Loader.h";
 #pragma warning(default: 4067 4244)
 
+#include <DirectXMath.h>
+#include <filesystem>
+#include <unordered_map>
+#include <iostream>
+#include <vector>
+#include <string>
 #include "Game.h"
 #include "Key.h"
 #include "Mesh.h"
-#include <vector>
-#include <DirectXMath.h>
-#include <filesystem>
-#include <string>
 #include "ICamera.h"
 #include "EngineEventType.h"
 #include "Texture.h"
-#include <unordered_map>
-#include <iostream>
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_FAILURE_USERMSG
@@ -84,15 +84,42 @@ class Input :
 	public TinyEngine::BaseInput
 {
 private:
+	unordered_map<TinyEngine::Key, bool> lastKeyboard;
+	unordered_map<TinyEngine::Key, bool> thisKeyboard;
+	unordered_map<TinyEngine::Key, bool> liveKeyboard;
+
+public:
+	void OnUpdate()
+	{
+		lastKeyboard = thisKeyboard;
+		thisKeyboard = liveKeyboard;
+	}
+
+	bool GetKey(TinyEngine::Key key)
+	{
+		return thisKeyboard[key];
+	}
+
+	bool GetKeyDown(TinyEngine::Key key)
+	{
+		return !lastKeyboard[key] && thisKeyboard[key];
+	}
+
+	bool GetKeyUp(TinyEngine::Key key)
+	{
+		return lastKeyboard[key] && !thisKeyboard[key];
+	}
+
+private:
 	// Inherited via BaseInput
 	virtual void OnKeyDown(TinyEngine::Key key)
 	{
-
+		liveKeyboard[key] = true;
 	}
 
 	virtual void OnKeyUp(TinyEngine::Key key)
 	{
-
+		liveKeyboard[key] = false;
 	}
 };
 
@@ -270,7 +297,25 @@ public:
 
 	virtual void OnUpdate(float elapsed, float delta) override
 	{
-		_camera.SetEyePosition({ sinf(elapsed) * 2.0f, 1.0f, cosf(elapsed) * 2.0f });
+		const auto input = GetInput();
+		input->OnUpdate();
+
+		float camYPos = _camera.GetEyePosition().y;
+
+		float camYTarget = 0.0f;
+		if (input->GetKey(TinyEngine::Key::W))
+		{
+			camYTarget += 1.0f;
+		}
+
+		if (input->GetKey(TinyEngine::Key::S))
+		{
+			camYTarget -= 1.0f;
+		}
+
+		camYPos = fminf(fmaxf(camYPos + camYTarget * delta, -1.0f), 3.0f);
+
+		_camera.SetEyePosition({ sinf(elapsed) * 2.0f, camYPos, cosf(elapsed) * 2.0f });
 
 		auto* renderer = GetRenderer();
 
@@ -278,6 +323,11 @@ public:
 		{
 			renderer->DrawMesh(mesh, &_camera, XMMatrixIdentity());
 		}
+	}
+
+	virtual Input* GetInput() const override
+	{
+		return static_cast<Input*>(TinyEngine::Game::GetInput());
 	}
 };
 

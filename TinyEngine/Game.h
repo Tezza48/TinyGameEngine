@@ -38,13 +38,15 @@ namespace TinyEngine
 		int GetWidth() const;
 		int GetHeight() const;
 
+		Renderer* GetRenderer() const;
+
+		virtual BaseInput* GetInput() const;
+
 		// Inherited via Observer
 		virtual void OnNotify(const Event& event) override;
 
 		virtual void OnInit() = 0;
 		virtual void OnUpdate(float elapsed, float delta) = 0;
-
-		Renderer* GetRenderer() const;
 
 	private:
 		void OnResize(int width, int height);

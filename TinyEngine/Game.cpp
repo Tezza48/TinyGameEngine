@@ -6,8 +6,9 @@ using std::cout;
 using std::endl;
 
 using namespace std::chrono;
+using namespace TinyEngine;
 
-TinyEngine::Game::Game(int width, int height, const char* title) :
+Game::Game(int width, int height, const char* title) :
 	_width(width), _height(height), _input(nullptr), _isRunning(false)
 {
 	_window = new Window(width, height, title);
@@ -17,7 +18,7 @@ TinyEngine::Game::Game(int width, int height, const char* title) :
 	_window->AddObserver(*_renderer);
 }
 
-TinyEngine::Game::~Game()
+Game::~Game()
 {
 	delete _window;
 	_window = nullptr;
@@ -32,7 +33,7 @@ TinyEngine::Game::~Game()
 	}
 }
 
-void TinyEngine::Game::Run()
+void Game::Run()
 {
 	_isRunning = true;
 
@@ -52,6 +53,11 @@ void TinyEngine::Game::Run()
 		auto elapsed = static_cast<float>(duration_cast<milliseconds>(thisTime - _startTime).count()) / 1000.0f;
 		auto delta = static_cast<float>(duration_cast<milliseconds>(thisTime - lastTime).count()) / 1000.0f;
 
+		if (delta < 0.0016)
+		{
+			continue;
+		}
+
 		// TODO: Delta Time.
 		OnUpdate(elapsed, delta);
 
@@ -61,24 +67,24 @@ void TinyEngine::Game::Run()
 	}
 }
 
-void TinyEngine::Game::SetInputHandler(BaseInput* input)
+void Game::SetInputHandler(BaseInput* input)
 {
 	_input = input;
 
 	_window->AddObserver(*_input);
 }
 
-int TinyEngine::Game::GetWidth() const
+int Game::GetWidth() const
 {
 	return _width;
 }
 
-int TinyEngine::Game::GetHeight() const
+int Game::GetHeight() const
 {
 	return _height;
 }
 
-void TinyEngine::Game::OnNotify(const Event& event)
+void Game::OnNotify(const Event& event)
 {
 	const auto type = static_cast<EngineEventType>(event.GetType());
 
@@ -102,12 +108,17 @@ void TinyEngine::Game::OnNotify(const Event& event)
 	}
 }
 
-TinyEngine::Renderer* TinyEngine::Game::GetRenderer() const
+Renderer* TinyEngine::Game::GetRenderer() const
 {
 	return _renderer;
 }
 
+BaseInput* TinyEngine::Game::GetInput() const
+{
+	return _input;
+}
+
 void TinyEngine::Game::OnResize(int width, int height)
 {
-	cout << "width " << width << ", height " << height << endl;
+
 }
