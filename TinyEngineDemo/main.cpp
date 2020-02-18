@@ -278,21 +278,18 @@ public:
 	// Inherited via Game
 	virtual void OnInit() override
 	{
-		LoadMeshes("./assets/mesh/specMapSphere.obj");
+		LoadMeshes("./assets/mesh/planets/venus.obj");
 
 		auto renderer = GetRenderer();
 
-		XMStoreFloat3(&renderer->lights[0].direction, XMVector3Normalize(XMVectorSet(-1.0f, -0.5f, -1.0f, 0.0f)));
+		XMStoreFloat3(&renderer->lights[0].direction, XMVector3Normalize(XMVectorSet(-1.0f, 0.0f, 0.0f, 0.0f)));
 		renderer->lights[0].color = { 1.0, 1.0, 1.0, 0.5f };
 
-		renderer->ambientLight = { 0.3f, 0.5f, 0.6f, 0.1f };
+		renderer->ambientLight = { 0.0f, 0.0f, 0.0f, 1.0f };
 		renderer->SetClearColor(renderer->ambientLight);
 
-		XMStoreFloat3(&renderer->lights[1].direction, XMVector3Normalize(XMVectorSet(1.0f, -0.25f, -1.0f, 0.0f)));
-		renderer->lights[1].color = { 0.2f, 0.2f, 0.4f, 0.3f };
-
-		XMStoreFloat3(&renderer->lights[2].direction, XMVector3Normalize(XMVectorSet(1.0f, -0.25f, 1.0f, 0.0f)));
-		renderer->lights[2].color = { 0.2f, 0.2f, 0.2f, 0.05f };
+		renderer->lights[1].color = { 0.0f, 0.0f, 0.0f, 0.0f };
+		renderer->lights[2].color = { 0.0f, 0.0f, 0.0f, 0.0f };
 	}
 
 	virtual void OnUpdate(float elapsed, float delta) override
@@ -315,7 +312,7 @@ public:
 
 		camYPos = fminf(fmaxf(camYPos + camYTarget * delta, -1.0f), 3.0f);
 
-		_camera.SetEyePosition({ sinf(elapsed) * 2.0f, camYPos, cosf(elapsed) * 2.0f });
+		_camera.SetEyePosition({ sinf(elapsed * 0.25f) * 5.0f, camYPos, cosf(elapsed * 0.25f) * 5.0f });
 
 		auto* renderer = GetRenderer();
 
@@ -342,7 +339,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	auto game = DemoGame(800, 600, "Game");
+	auto game = DemoGame(1600, 900, "Game");
 	game.Run();
 
 	return 0;
