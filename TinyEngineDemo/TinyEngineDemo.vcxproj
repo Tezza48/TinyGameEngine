@@ -144,7 +144,12 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Actor.cpp" />
+    <ClCompile Include="FreeCameraActor.cpp" />
+    <ClCompile Include="Input.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MeshActor.cpp" />
+    <ClCompile Include="SpaceGame.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="DefaultPixelShader.hlsl">
@@ -171,6 +176,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="DefaultShader.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Actor.h" />
+    <ClInclude Include="FreeCameraActor.h" />
+    <ClInclude Include="Input.h" />
+    <ClInclude Include="MeshActor.h" />
+    <ClInclude Include="SpaceGame.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
