@@ -14,8 +14,9 @@ struct DirectionLight
 	float _pad;
 };
 
-Texture2D DiffuseTexture : register(t0);
-Texture2D SpecularTexture : register(t1);
+Texture2D AmbientTexture : register(t0);
+Texture2D DiffuseTexture : register(t1);
+Texture2D SpecularTexture : register(t2);
 
 SamplerState DefaultSampler : register(s0);
 

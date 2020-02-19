@@ -14,6 +14,7 @@
 #include "ICamera.h"
 #include "EngineEventType.h"
 #include "Texture.h"
+#include "Shader.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_FAILURE_USERMSG
@@ -28,6 +29,7 @@ using TinyEngine::Mesh;
 using TinyEngine::Material;
 using TinyEngine::VertexStandard;
 using TinyEngine::Texture;
+using TinyEngine::Shader;
 using std::unordered_map;
 using std::string;
 using std::cout;
@@ -55,7 +57,7 @@ public:
 
 	virtual DirectX::XMMATRIX GetProjection()
 	{
-		return XMMatrixPerspectiveFovLH(XM_PIDIV2, _aspectRatio, 0.01f, 100.0f);
+		return XMMatrixPerspectiveFovLH(XM_PIDIV4, _aspectRatio, 0.01f, 1000.0f);
 	}
 
 	void SetAspectRatio(float aspectRatio)
@@ -134,6 +136,7 @@ private:
 	Texture* _nullTexture;
 
 	Camera _camera;
+	Shader* _skyboxShader;
 
 public:
 	DemoGame(int width, int height, const char* title) : TinyEngine::Game(width, height, title), _objLoader(nullptr)
@@ -176,6 +179,9 @@ public:
 			delete _objLoader;
 			_objLoader = nullptr;
 		}
+
+		delete _skyboxShader;
+		_skyboxShader = nullptr;
 	}
 	
 	Texture* LoadTexture(const char* path)
@@ -235,8 +241,19 @@ public:
 				const auto& objlMat = meshData.MeshMaterial;
 
 				auto* mat = new Material {};
-				mat->ambient = XMFLOAT3(&objlMat.Ka.X);
 				mat->transparency = objlMat.d;
+
+				if (objlMat.map_Ka != "")
+				{
+					std::filesystem::path texPath(path);
+					texPath.remove_filename().append(objlMat.map_Ka);
+					mat->ambientTexture = LoadTexture(texPath.string().c_str());
+				}
+				else
+				{
+					mat->ambientTexture = _nullTexture;
+					mat->ambient = XMFLOAT3(&objlMat.Ka.X);
+				}
 
 				if (objlMat.map_Kd != "")
 				{
@@ -278,9 +295,25 @@ public:
 	// Inherited via Game
 	virtual void OnInit() override
 	{
-		LoadMeshes("./assets/mesh/planets/venus.obj");
-
 		auto renderer = GetRenderer();
+
+		D3D11_INPUT_ELEMENT_DESC inputDescs[3] = {
+			{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA},
+			{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA},
+			{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA}
+		};
+
+		_skyboxShader = new Shader(
+			renderer,
+			"./assets/shader/DefaultVertexShader.cso",
+			"./assets/shader/SkyboxPixelShader.cso",
+			inputDescs, 3
+		);
+
+		auto skyboxMesh = LoadMeshes("./assets/mesh/nightSkySphere.obj");
+		skyboxMesh[0]->GetPartMaterial(0)->shader = _skyboxShader;
+
+		auto venusMeshes = LoadMeshes("./assets/mesh/planets/venus.obj");
 
 		XMStoreFloat3(&renderer->lights[0].direction, XMVector3Normalize(XMVectorSet(-1.0f, 0.0f, 0.0f, 0.0f)));
 		renderer->lights[0].color = { 1.0, 1.0, 1.0, 0.5f };
@@ -312,7 +345,10 @@ public:
 
 		camYPos = fminf(fmaxf(camYPos + camYTarget * delta, -1.0f), 3.0f);
 
-		_camera.SetEyePosition({ sinf(elapsed * 0.25f) * 5.0f, camYPos, cosf(elapsed * 0.25f) * 5.0f });
+		float eyeDistance = 20.0f;
+		float time = elapsed * 0.125f;
+
+		_camera.SetEyePosition({ cosf(time) * eyeDistance , camYPos, sinf(time) * eyeDistance });
 
 		auto* renderer = GetRenderer();
 

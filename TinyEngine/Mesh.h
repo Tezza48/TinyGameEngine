@@ -35,6 +35,8 @@ namespace TinyEngine
 		void SetVertices(VertexStandard* vertices, unsigned int numVertices);
 		void AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex, Material* mat = nullptr);
 
+		Material* GetPartMaterial(size_t part);
+
 #ifdef TINY_ENGINE_EXPOSE_NATIVE
 		ID3D11Buffer* GetVertexBuffer() const
 		{
