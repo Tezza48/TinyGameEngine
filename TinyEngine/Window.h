@@ -4,8 +4,6 @@
 #include "Subject.h"
 #include "EngineEventType.h"
 
-class DemoGame;
-
 namespace TinyEngine
 {
 	class Window :
