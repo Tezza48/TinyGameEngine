@@ -2,9 +2,8 @@
 
 TinyEngine is a single header game engine implementation project inspired by the OLC Game engines.
 
-New Thing: Blinn Phong lighting and Diffuse/Specular texture maps!
+## Venus Demo
 
-![Texture maps](media/specular_map.png)
+This demo uses the default shader and textures from [Solar System Scope](https://www.solarsystemscope.com/textures/) which are free which is wicked!
 
-## Note:
-The default shaders are currently separate from the header but will eventually be bundled into it in some form so that you only need one header for the engine to work.
+![Venus Demo](media/venus-demo-01.png)

@@ -25,13 +25,15 @@ float4 main(PS_IN i) : SV_TARGET
 	float3 color = float3(0.0, 0.0, 0.0);
 	float3 toEye = normalize(EyePositionW - i.positionW);
 
-	float4 specTex = SpecularTexture.Sample(DefaultSampler, i.texcoord);
+	float3 ambientTex = AmbientTexture.Sample(DefaultSampler, i.texcoord).rgb;
 	float3 diffuseTex = DiffuseTexture.Sample(DefaultSampler, i.texcoord).rgb;
+	float4 specTex = SpecularTexture.Sample(DefaultSampler, i.texcoord);
 
 	Material mat = Mat;
+	mat.Ambient += ambientTex;
 	mat.Diffuse += diffuseTex;
 	mat.Specular += specTex.rgb;
-	mat.SpecularExponent += (specTex.a * 500.0);
+	mat.SpecularExponent += specTex.a * 1000.0;
 
 	for (int j = 0; j < 3; j++)
 	{

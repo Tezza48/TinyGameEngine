@@ -4,15 +4,17 @@
 #include "Mesh.h"
 #include <iostream>
 
+using namespace TinyEngine;
+
 using std::cout;
 using std::endl;
 
-TinyEngine::Mesh::Mesh(Renderer* renderer) : _renderer(renderer), _numVertices(0), _vertexBuffer(nullptr)
+Mesh::Mesh(Renderer* renderer) : _renderer(renderer), _numVertices(0), _vertexBuffer(nullptr)
 {
 
 }
 
-TinyEngine::Mesh::~Mesh()
+Mesh::~Mesh()
 {
 	_vertexBuffer->Release();
 	_vertexBuffer = nullptr;
@@ -23,7 +25,7 @@ TinyEngine::Mesh::~Mesh()
 	}
 }
 
-void TinyEngine::Mesh::SetVertices(VertexStandard* vertices, unsigned int numVertices)
+void Mesh::SetVertices(VertexStandard* vertices, unsigned int numVertices)
 {
 	_numVertices = numVertices;
 
@@ -46,7 +48,7 @@ void TinyEngine::Mesh::SetVertices(VertexStandard* vertices, unsigned int numVer
 	}
 }
 
-void TinyEngine::Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex, Material* mat)
+void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex, Material* mat)
 {
 	D3D11_BUFFER_DESC bd;
 	bd.ByteWidth = numIndices * sizeof(unsigned int);
@@ -69,4 +71,14 @@ void TinyEngine::Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numInd
 	}
 
 	_parts.push_back({ indexBuffer, numIndices, baseVertex, mat });
+}
+
+Material* Mesh::GetPartMaterial(size_t part)
+{
+	if (part >= _parts.size())
+	{
+		cout << "Trying to get material at index: " << part << " which is out of bounds" << endl;
+	}
+
+	return _parts[part].mat;
 }

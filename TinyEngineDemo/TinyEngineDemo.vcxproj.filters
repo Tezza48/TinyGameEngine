@@ -22,6 +22,7 @@
   <ItemGroup>
     <FxCompile Include="DefaultPixelShader.hlsl" />
     <FxCompile Include="DefaultVertexShader.hlsl" />
+    <FxCompile Include="SkyboxPixelShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="DefaultShader.hlsli" />

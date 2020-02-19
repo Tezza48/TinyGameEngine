@@ -210,6 +210,8 @@ void TinyEngine::Renderer::SwapBuffers()
 
 void TinyEngine::Renderer::DrawMesh(Mesh* mesh, ICamera* camera, XMMATRIX world)
 {
+	// TODO WT: Dont draw here, build a batch that's sorted by shader and vertex buffer to optimize drawing.
+	// Let shaders deal with uploading the data they need.
 	auto context = _immediateContext;
 
 	const unsigned int stride = sizeof(VertexStandard);
@@ -220,9 +222,6 @@ void TinyEngine::Renderer::DrawMesh(Mesh* mesh, ICamera* camera, XMMATRIX world)
 	context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->IASetInputLayout(_defaultShader->GetInputLayout());
-
-	context->VSSetShader(_defaultShader->GetVertexShader(), nullptr, 0);
-	context->PSSetShader(_defaultShader->GetPixelShader(), nullptr, 0);
 
 	context->PSSetSamplers(0, 1, &_defaultSamplerState);
 
@@ -255,6 +254,15 @@ void TinyEngine::Renderer::DrawMesh(Mesh* mesh, ICamera* camera, XMMATRIX world)
 		{
 			auto part = mesh->GetMeshPart(i);
 
+			auto shader = part.mat->shader;
+			if (!shader)
+			{
+				shader = _defaultShader;
+			}
+
+			context->VSSetShader(shader->GetVertexShader(), nullptr, 0);
+			context->PSSetShader(shader->GetPixelShader(), nullptr, 0);
+
 			PerMaterialCBData matCb;
 			matCb.mat.diffuse = part.mat->diffuse;
 			matCb.mat.ambient = part.mat->ambient;
@@ -265,12 +273,13 @@ void TinyEngine::Renderer::DrawMesh(Mesh* mesh, ICamera* camera, XMMATRIX world)
 			_perMaterialCB->Upload(matCb);
 
 			// set textures from material
-			ID3D11ShaderResourceView* textureViews[2] = {
-					part.mat->diffuseTexture->GetTextureView(),
-					part.mat->specularTexture->GetTextureView()
+			ID3D11ShaderResourceView* textureViews[3] = {
+				part.mat->ambientTexture->GetTextureView(),
+				part.mat->diffuseTexture->GetTextureView(),
+				part.mat->specularTexture->GetTextureView()
 			};
 
-			context->PSSetShaderResources(0, 2, textureViews);
+			context->PSSetShaderResources(0, 3, textureViews);
 
 			{
 				auto buffer = _perMaterialCB->GetBuffer();
