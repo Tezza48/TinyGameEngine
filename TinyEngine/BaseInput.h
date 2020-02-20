@@ -15,6 +15,7 @@ namespace TinyEngine
 	private:
 		virtual void OnKeyDown(Key key) = 0;
 		virtual void OnKeyUp(Key key) = 0;
+		virtual void OnMouseMove(float x, float y) = 0;
 	};
 }
 

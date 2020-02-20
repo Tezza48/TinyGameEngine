@@ -1,9 +1,17 @@
 #pragma once
 
+#include <Windows.h>
+
 namespace TinyEngine
 {
 	enum class Key
 	{
+		ESC = VK_ESCAPE,
+		SPACE = VK_SPACE,
+		LEFT = VK_LEFT,
+		UP = VK_UP,
+		RIGHT = VK_RIGHT,
+		DOWN = VK_DOWN,
 		N0 = 0x30,
 		N1,
 		N2,

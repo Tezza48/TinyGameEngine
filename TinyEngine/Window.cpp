@@ -63,6 +63,27 @@ void TinyEngine::Window::PeekMessages()
 	}
 }
 
+void TinyEngine::Window::SetCaptureMouse(bool shouldCapture)
+{
+	_captureMouse = shouldCapture;
+}
+
+bool TinyEngine::Window::GetCaptureMouse() const
+{
+	return _captureMouse;
+}
+
+void TinyEngine::Window::SetMouseVisible(bool isVisible)
+{
+	ShowCursor(isVisible);
+	_mouseVisible = isVisible;
+}
+
+bool TinyEngine::Window::GetMouseVisible() const
+{
+	return _mouseVisible;
+}
+
 LRESULT TinyEngine::Window::WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM lparam)
 {
 	static Window* window;
@@ -79,6 +100,11 @@ LRESULT TinyEngine::Window::WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM 
 	{
 		const auto width = LOWORD(lparam);
 		const auto height = HIWORD(lparam);
+
+		window->_restingMouseX = width / 2;
+		window->_restingMouseY = height / 2;
+
+		cout << width << " " << window->_restingMouseX << endl;
 
 		window->Notify(ResizeEvent(width, height));
 
@@ -97,6 +123,21 @@ LRESULT TinyEngine::Window::WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM 
 	case WM_KEYUP:
 	{
 		window->Notify(KeyboardEvent(static_cast<int>(EngineEventType::WINDOW_KEY_UP), static_cast<Key>(wparam)));
+
+		return 0;
+	}
+	case WM_MOUSEMOVE:
+	{
+		if (window->_captureMouse)
+		{
+			float x = static_cast<float>(LOWORD(lparam) - window->_restingMouseX);
+			float y = static_cast<float>(HIWORD(lparam) - window->_restingMouseY);
+			window->Notify(Vec2Event(static_cast<int>(EngineEventType::WINDOW_MOUSE_MOVE), x, y));
+
+			POINT originScreenSpace = { };
+			ClientToScreen(window->_window, &originScreenSpace);
+			SetCursorPos(originScreenSpace.x + window->_restingMouseX, originScreenSpace.y + window->_restingMouseY);
+		}
 
 		return 0;
 	}

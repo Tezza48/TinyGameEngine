@@ -22,5 +22,15 @@ namespace TinyEngine
 
 		KeyboardEvent(int type, Key key);
 	};
+
+	class Vec2Event :
+		public Event
+	{
+	public:
+		float x;
+		float y;
+
+		Vec2Event(int type, float x, float y);
+	};
 }
 
