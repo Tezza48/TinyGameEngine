@@ -46,17 +46,17 @@ void Game::Run()
 	{
 		_window->PeekMessages();
 
-		_renderer->Clear();
-
 		auto thisTime = high_resolution_clock::now();
 
 		auto elapsed = static_cast<float>(duration_cast<milliseconds>(thisTime - _startTime).count()) / 1000.0f;
 		auto delta = static_cast<float>(duration_cast<milliseconds>(thisTime - lastTime).count()) / 1000.0f;
 
-		if (delta < 0.0016)
+		if (delta < 0.016f)
 		{
 			continue;
 		}
+
+		_renderer->Clear();
 
 		// TODO: Delta Time.
 		OnUpdate(elapsed, delta);
@@ -111,6 +111,11 @@ void Game::OnNotify(const Event& event)
 Renderer* TinyEngine::Game::GetRenderer() const
 {
 	return _renderer;
+}
+
+Window* TinyEngine::Game::GetWindow() const
+{
+	return _window;
 }
 
 BaseInput* TinyEngine::Game::GetInput() const

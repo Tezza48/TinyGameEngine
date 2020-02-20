@@ -9,5 +9,6 @@ namespace TinyEngine
 		WINDOW_RESIZE,
 		WINDOW_KEY_DOWN,
 		WINDOW_KEY_UP,
+		WINDOW_MOUSE_MOVE
 	};
 }
