@@ -16,9 +16,14 @@ DirectX::XMFLOAT3 FreeCameraActor::GetEyePosition()
 
 DirectX::XMMATRIX FreeCameraActor::GetView()
 {
-	XMFLOAT3 target = {};
-	XMFLOAT3 up = { 0.0f, 1.0f, 0.0f };
-	return XMMatrixLookAtLH(XMLoadFloat3(&_position), XMLoadFloat3(&target), XMLoadFloat3(&up));
+	//XMFLOAT3 target = {};
+	//XMFLOAT3 up = { 0.0f, 1.0f, 0.0f };
+	//return XMMatrixLookAtLH(XMLoadFloat3(&_position), XMLoadFloat3(&target), XMLoadFloat3(&up));
+
+	auto world = GetWorld();
+	auto det = XMMatrixDeterminant(world);
+
+	return XMMatrixInverse(&det, world);
 }
 
 DirectX::XMMATRIX FreeCameraActor::GetProjection()
@@ -30,15 +35,21 @@ void FreeCameraActor::OnUpdate(float elapsed, float delta)
 {
 	auto input = _game->GetInput();
 
-	if (input->GetKey(Key::W))
-	{
-		_position.z += delta * 10.0f;
-	}
+	//XMQuaternionAngles
 
-	if (input->GetKey(Key::S))
-	{
-		_position.z -= delta * 10.0f;
-	}
+	//if (input->GetKey(Key::W))
+	//{
+	//	_position.z += delta * 10.0f;
+	//}
+
+	//if (input->GetKey(Key::S))
+	//{
+	//	_position.z -= delta * 10.0f;
+	//}
+
+	_position.z += input->GetMouseDelta().y / _game->GetHeight() * delta * 10.0f;
+
+	//XMQuaternionRotationRollPitchYaw()
 
 	Actor::OnUpdate(elapsed, delta);
 }

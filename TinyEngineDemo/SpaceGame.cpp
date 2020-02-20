@@ -215,6 +215,13 @@ void SpaceGame::OnUpdate(float elapsed, float delta)
 	const auto input = GetInput();
 	input->OnUpdate();
 
+	if (input->GetKeyDown(Key::ESC))
+	{
+		auto window = GetWindow();
+		window->SetCaptureMouse(!window->GetCaptureMouse());
+		window->SetMouseVisible(!window->GetMouseVisible());
+	}
+
 	_rootActor->OnUpdate(elapsed, delta);
 
 	_rootActor->OnDraw(GetRenderer());
