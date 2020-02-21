@@ -190,9 +190,9 @@ void SpaceGame::OnInit()
 	auto skyboxMesh = LoadMeshes("./assets/mesh/nightSkySphere.obj");
 	skyboxMesh[0]->GetPartMaterial(0)->shader = _skyboxShader;
 
-	auto* skybox = new MeshActor(this);
-	skybox->SetMesh(skyboxMesh[0]);
-	skybox->SetParent(freeCamera);
+	_skyboxActor = new MeshActor(this);
+	_skyboxActor->SetMesh(skyboxMesh[0]);
+	_skyboxActor->SetParent(_rootActor);
 
 	auto venusMeshes = LoadMeshes("./assets/mesh/planets/venus.obj");
 
@@ -212,7 +212,7 @@ void SpaceGame::OnInit()
 
 void SpaceGame::OnUpdate(float elapsed, float delta)
 {
-	const auto input = GetInput();
+	auto input = GetInput();
 	input->OnUpdate();
 
 	if (input->GetKeyDown(Key::ESC))
@@ -221,6 +221,8 @@ void SpaceGame::OnUpdate(float elapsed, float delta)
 		window->SetCaptureMouse(!window->GetCaptureMouse());
 		window->SetMouseVisible(!window->GetMouseVisible());
 	}
+
+	_skyboxActor->SetPosition(_activeCamera->GetEyePosition());
 
 	_rootActor->OnUpdate(elapsed, delta);
 

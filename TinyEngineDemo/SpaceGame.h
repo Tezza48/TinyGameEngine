@@ -23,6 +23,7 @@ private:
 	TinyEngine::Texture* _nullTexture;
 
 	// Game
+	MeshActor* _skyboxActor;
 	TinyEngine::Shader* _skyboxShader;
 
 	Actor* _rootActor;

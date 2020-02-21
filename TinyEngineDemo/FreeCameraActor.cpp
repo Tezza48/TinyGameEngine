@@ -16,10 +16,6 @@ DirectX::XMFLOAT3 FreeCameraActor::GetEyePosition()
 
 DirectX::XMMATRIX FreeCameraActor::GetView()
 {
-	//XMFLOAT3 target = {};
-	//XMFLOAT3 up = { 0.0f, 1.0f, 0.0f };
-	//return XMMatrixLookAtLH(XMLoadFloat3(&_position), XMLoadFloat3(&target), XMLoadFloat3(&up));
-
 	auto world = GetWorld();
 	auto det = XMMatrixDeterminant(world);
 
@@ -35,21 +31,55 @@ void FreeCameraActor::OnUpdate(float elapsed, float delta)
 {
 	auto input = _game->GetInput();
 
-	//XMQuaternionAngles
+	const auto mouseDelta = input->GetMouseDelta();
 
-	//if (input->GetKey(Key::W))
-	//{
-	//	_position.z += delta * 10.0f;
-	//}
+	auto vecOrientation = XMLoadFloat4(&_orientation);
+	XMFLOAT3 localRight = { 1.0f, 0.0f, 0.0f };
+	XMFLOAT3 localFwd = { 0.0f, 0.0f, 1.0f };
 
-	//if (input->GetKey(Key::S))
-	//{
-	//	_position.z -= delta * 10.0f;
-	//}
+	auto vecLocalRight = XMLoadFloat3(&localRight);
+	auto vecLocalFwd = XMLoadFloat3(&localFwd);
 
-	_position.z += input->GetMouseDelta().y / _game->GetHeight() * delta * 10.0f;
+	XMStoreFloat4(&_orientation, vecOrientation);
 
-	//XMQuaternionRotationRollPitchYaw()
+	auto worldFwd = XMVector3Rotate(vecLocalFwd, vecOrientation);
+	auto worldRight = XMVector3Rotate(vecLocalRight, vecOrientation);
+
+	float sensetivity = 2.0;
+
+	_yaw += mouseDelta.x / _game->GetWidth() * sensetivity;
+
+	_pitch += mouseDelta.y / _game->GetHeight() * sensetivity;
+	_pitch = fminf(XM_PIDIV2, _pitch);
+	_pitch = fmaxf(-XM_PIDIV2, _pitch);
+
+	XMStoreFloat4(&_orientation, XMQuaternionRotationRollPitchYaw(_pitch, _yaw, 0.0f));
+
+	float fwdInput = 0.0f;
+	if (input->GetKey(Key::W))
+	{
+		fwdInput++;
+	}
+
+	if (input->GetKey(Key::S))
+	{
+		fwdInput--;
+	}
+
+	float rightInput = 0.0f;
+	if (input->GetKey(Key::D))
+	{
+		rightInput++;
+	}
+
+	if (input->GetKey(Key::A))
+	{
+		rightInput--;
+	}
+
+	auto moveDelta = XMVector3Normalize(worldFwd * fwdInput + worldRight * rightInput) * delta * 10.0f;
+
+	XMStoreFloat3(&_position, XMVectorAdd(XMLoadFloat3(&_position), moveDelta));
 
 	Actor::OnUpdate(elapsed, delta);
 }

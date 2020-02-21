@@ -8,6 +8,8 @@ class FreeCameraActor :
 {
 private:
 	float _aspectRatio = 1.0f;
+	float _yaw = 0.0f;
+	float _pitch = 0.0f;
 
 public:
 	FreeCameraActor(SpaceGame* game) : Actor(game) {}
