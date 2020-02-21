@@ -11,12 +11,22 @@ namespace TinyEngine
 	{
 	private:
 		HWND _window;
+		int _restingMouseX;
+		int _restingMouseY;
+		bool _captureMouse = false;
+		bool _mouseVisible = true;
 
 	public:
 		Window(int width, int height, const char* title);
 		~Window();
 
 		void PeekMessages();
+
+		void SetCaptureMouse(bool shouldCapture);
+		bool GetCaptureMouse() const;
+
+		void SetMouseVisible(bool isVisible);
+		bool GetMouseVisible() const;
 
 #ifdef TINY_ENGINE_EXPOSE_NATIVE
 		inline HWND GetWindow() const

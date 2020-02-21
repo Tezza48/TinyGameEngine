@@ -13,3 +13,7 @@ int TinyEngine::Event::GetType() const
 }
 
 TinyEngine::KeyboardEvent::KeyboardEvent(int type, Key key) : Event(type), key(key) { }
+
+TinyEngine::Vec2Event::Vec2Event(int type, float x, float y): Event(type), x(x), y(y)
+{
+}

@@ -30,15 +30,16 @@ namespace TinyEngine
 
 		Game(const Game& game) = delete;
 
+		int GetWidth() const;
+		int GetHeight() const;
+
 		void Run();
 
 	protected:
 		void SetInputHandler(BaseInput* input);
 
-		int GetWidth() const;
-		int GetHeight() const;
-
 		Renderer* GetRenderer() const;
+		Window* GetWindow() const;
 
 		virtual BaseInput* GetInput() const;
 
