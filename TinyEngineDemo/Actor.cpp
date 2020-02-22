@@ -25,6 +25,16 @@ void Actor::SetPosition(DirectX::XMFLOAT3 position)
 	_position = position;
 }
 
+DirectX::XMFLOAT3 Actor::GetScale() const
+{
+	return _scale;
+}
+
+void Actor::SetScale(DirectX::XMFLOAT3 scale)
+{
+	_scale = scale;
+}
+
 XMMATRIX Actor::GetWorld() const
 {
 	XMMATRIX thisWorld = GetLocalTransform();

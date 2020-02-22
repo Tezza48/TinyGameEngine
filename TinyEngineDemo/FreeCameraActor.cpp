@@ -35,17 +35,20 @@ void FreeCameraActor::OnUpdate(float elapsed, float delta)
 
 	auto vecOrientation = XMLoadFloat4(&_orientation);
 	XMFLOAT3 localRight = { 1.0f, 0.0f, 0.0f };
+	XMFLOAT3 localUp = { 0.0f, 1.0f, 0.0f };
 	XMFLOAT3 localFwd = { 0.0f, 0.0f, 1.0f };
 
 	auto vecLocalRight = XMLoadFloat3(&localRight);
+	auto vecLocalUp = XMLoadFloat3(&localUp);
 	auto vecLocalFwd = XMLoadFloat3(&localFwd);
 
 	XMStoreFloat4(&_orientation, vecOrientation);
 
-	auto worldFwd = XMVector3Rotate(vecLocalFwd, vecOrientation);
-	auto worldRight = XMVector3Rotate(vecLocalRight, vecOrientation);
+	auto vecWorldFwd = XMVector3Rotate(vecLocalFwd, vecOrientation);
+	auto vecWorldRight = XMVector3Rotate(vecLocalRight, vecOrientation);
 
 	float sensetivity = 2.0;
+	float moveSpeed = 20.0f;
 
 	_yaw += mouseDelta.x / _game->GetWidth() * sensetivity;
 
@@ -56,28 +59,19 @@ void FreeCameraActor::OnUpdate(float elapsed, float delta)
 	XMStoreFloat4(&_orientation, XMQuaternionRotationRollPitchYaw(_pitch, _yaw, 0.0f));
 
 	float fwdInput = 0.0f;
-	if (input->GetKey(Key::W))
-	{
-		fwdInput++;
-	}
-
-	if (input->GetKey(Key::S))
-	{
-		fwdInput--;
-	}
+	if (input->GetKey(Key::W)) fwdInput++;
+	if (input->GetKey(Key::S)) fwdInput--;
 
 	float rightInput = 0.0f;
-	if (input->GetKey(Key::D))
-	{
-		rightInput++;
-	}
+	if (input->GetKey(Key::D)) rightInput++;
+	if (input->GetKey(Key::A)) rightInput--;
 
-	if (input->GetKey(Key::A))
-	{
-		rightInput--;
-	}
+	float upInput = 0.0f;
+	if (input->GetKey(Key::R)) upInput++;
+	if (input->GetKey(Key::F)) upInput--;
 
-	auto moveDelta = XMVector3Normalize(worldFwd * fwdInput + worldRight * rightInput) * delta * 10.0f;
+
+	auto moveDelta = XMVector3Normalize(vecWorldFwd * fwdInput + vecWorldRight * rightInput + vecLocalUp * upInput) * delta * moveSpeed;
 
 	XMStoreFloat3(&_position, XMVectorAdd(XMLoadFloat3(&_position), moveDelta));
 

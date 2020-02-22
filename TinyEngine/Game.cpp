@@ -51,7 +51,7 @@ void Game::Run()
 		auto elapsed = static_cast<float>(duration_cast<milliseconds>(thisTime - _startTime).count()) / 1000.0f;
 		auto delta = static_cast<float>(duration_cast<milliseconds>(thisTime - lastTime).count()) / 1000.0f;
 
-		if (delta < 0.016f)
+		if (delta < 0.004f)
 		{
 			continue;
 		}

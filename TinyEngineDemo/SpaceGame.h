@@ -17,15 +17,13 @@ class SpaceGame :
 {
 private:
 	// Asset manager?
+	// TODO WT: should all be maps so assets can be requested by name, far easier to work with.
 	std::vector<TinyEngine::Mesh*> _meshes;
 	std::vector<TinyEngine::Material*> _materials;
 	std::unordered_map<std::string, TinyEngine::Texture*> _textures;
 	TinyEngine::Texture* _nullTexture;
 
 	// Game
-	MeshActor* _skyboxActor;
-	TinyEngine::Shader* _skyboxShader;
-
 	Actor* _rootActor;
 
 public:

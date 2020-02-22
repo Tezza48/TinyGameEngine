@@ -12,6 +12,7 @@
 #include <DirectXMath.h>
 #include <filesystem>
 #include "FreeCameraActor.h"
+#include <random>
 								
 using namespace DirectX;
 using namespace TinyEngine;
@@ -19,8 +20,9 @@ using namespace TinyEngine;
 using std::cout;
 using std::endl;
 using std::vector;
+using std::linear_congruential_engine;
 
-SpaceGame::SpaceGame(int width, int height, const char* title) : TinyEngine::Game(width, height, title), _skyboxShader(nullptr)
+SpaceGame::SpaceGame(int width, int height, const char* title) : TinyEngine::Game(width, height, title)
 {
 	SetInputHandler(new Input());
 
@@ -54,9 +56,6 @@ SpaceGame::~SpaceGame()
 		delete textureKeyVal.second;
 		textureKeyVal.second = nullptr;
 	}
-
-	delete _skyboxShader;
-	_skyboxShader = nullptr;
 }
 
 Texture* SpaceGame::LoadTexture(const char* path)
@@ -172,7 +171,7 @@ void SpaceGame::OnInit()
 
 	auto* freeCamera = new FreeCameraActor(this);
 	freeCamera->SetParent(_rootActor);
-	freeCamera->SetPosition({ 0.0f, 0.0f, -20.0f });
+	freeCamera->SetPosition({ 0.0f, 0.0f, -50.0f });
 	freeCamera->SetAspectRatio(static_cast<float>(this->GetWidth()) / static_cast<float>(this->GetHeight()));
 
 	AddObserver(*freeCamera);
@@ -185,29 +184,74 @@ void SpaceGame::OnInit()
 	{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA }
 	};
 
-	_skyboxShader = new Shader(renderer, "./assets/shader/DefaultVertexShader.cso", "./assets/shader/SkyboxPixelShader.cso", inputDescs, 3);
-
-	auto skyboxMesh = LoadMeshes("./assets/mesh/nightSkySphere.obj");
-	skyboxMesh[0]->GetPartMaterial(0)->shader = _skyboxShader;
-
-	_skyboxActor = new MeshActor(this);
-	_skyboxActor->SetMesh(skyboxMesh[0]);
-	_skyboxActor->SetParent(_rootActor);
-
-	auto venusMeshes = LoadMeshes("./assets/mesh/planets/venus.obj");
-
-	auto* meshActor = new MeshActor(this);
-	meshActor->SetMesh(venusMeshes[0]);
-	meshActor->SetParent(_rootActor);
+	auto sphereMesh = LoadMeshes("./assets/mesh/sphere_1u.obj")[0];
 
 	XMStoreFloat3(&renderer->lights[0].direction, XMVector3Normalize(XMVectorSet(-1.0f, 0.0f, 0.0f, 0.0f)));
-	renderer->lights[0].color = { 1.0, 1.0, 1.0, 0.5f };
+	renderer->lights[0].color = { 1.0, 1.0, 1.0, 0.0f };
 
-	renderer->ambientLight = { 0.0f, 0.0f, 0.0f, 1.0f };
-	renderer->SetClearColor(renderer->ambientLight);
+	renderer->ambientLight = { 1.0f, 1.0f, 1.0f, 1.0f };
+	renderer->SetClearColor({ 0.0f, 0.0f, 0.0f, 1.0f });
 
 	renderer->lights[1].color = { 0.0f, 0.0f, 0.0f, 0.0f };
 	renderer->lights[2].color = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+	// Universe map scene...
+	auto planetHolder = new Actor(this);
+	planetHolder->SetParent(_rootActor);
+
+	MeshActor* planets[16 * 16 * 16];
+
+	for (int z = 0; z < 16; z++)
+	{
+		for (int y = 0; y < 16; y++)
+		{
+			for (int x = 0; x < 16; x++)
+			{
+				//const r = rand();
+				if (0.2f < (static_cast<float>(rand()) / RAND_MAX))
+				{
+					continue;
+				}
+
+				// TODO WT: Meshes and materials should not exist together cos it makes this stuff confusing and inefficent.
+				// Suggesting either a MeshRenderer component class or the MeshActor maintains a list of material and the mesh itself.
+
+				// Grab a copy of the mesh, will have the same internal buffers
+				auto meshCpy = new Mesh(*sphereMesh);
+				_meshes.push_back(meshCpy);
+
+				// Copy the mesh's material
+				auto mat = new Material(*meshCpy->GetPartMaterial(0));
+				// Set the mat's ambient to a random color
+				mat->ambient = {
+					(static_cast<float>(rand()) / RAND_MAX),
+					(static_cast<float>(rand()) / RAND_MAX),
+					(static_cast<float>(rand()) / RAND_MAX)
+				};
+				_materials.push_back(mat);
+
+				meshCpy->SetPartMaterial(0, mat);
+
+				auto newPlanet = new MeshActor(this);
+				newPlanet->SetMesh(meshCpy);
+				newPlanet->SetParent(planetHolder);
+				planets[z * 16 * 16 + y * 16 + x] = newPlanet;
+
+				float posScale = 16.0f;
+
+				float xPos = ((static_cast<float>(x) - 8.0f) + (float)rand() / RAND_MAX)* posScale;
+				float yPos = ((static_cast<float>(y) - 8.0f) + (float)rand() / RAND_MAX)* posScale;
+				float zPos = ((static_cast<float>(z) - 8.0f) + (float)rand() / RAND_MAX)* posScale;
+
+				newPlanet->SetPosition({ xPos, yPos, zPos });
+
+				auto scale = static_cast<float>(rand()) / RAND_MAX;
+				scale += 0.5f;
+
+				newPlanet->SetScale({ scale, scale, scale });
+			}
+		}
+	}
 }
 
 void SpaceGame::OnUpdate(float elapsed, float delta)
@@ -221,8 +265,6 @@ void SpaceGame::OnUpdate(float elapsed, float delta)
 		window->SetCaptureMouse(!window->GetCaptureMouse());
 		window->SetMouseVisible(!window->GetMouseVisible());
 	}
-
-	_skyboxActor->SetPosition(_activeCamera->GetEyePosition());
 
 	_rootActor->OnUpdate(elapsed, delta);
 

@@ -8,6 +8,7 @@ using namespace TinyEngine;
 
 using std::cout;
 using std::endl;
+using std::vector;
 
 Mesh::Mesh(Renderer* renderer) : _renderer(renderer), _numVertices(0), _vertexBuffer(nullptr)
 {
@@ -17,11 +18,25 @@ Mesh::Mesh(Renderer* renderer) : _renderer(renderer), _numVertices(0), _vertexBu
 Mesh::~Mesh()
 {
 	_vertexBuffer->Release();
-	_vertexBuffer = nullptr;
 
 	for (size_t i = 0, l = _parts.size(); i < l; i++) {
 		_parts[i].indexBuffer->Release();
-		_parts[i].indexBuffer = nullptr;
+	}
+}
+
+TinyEngine::Mesh::Mesh(const Mesh& mesh)
+{
+	_vertexBuffer = mesh._vertexBuffer;
+	_vertexBuffer->AddRef();
+
+	_numVertices = mesh._numVertices;
+
+	_renderer = mesh._renderer;
+
+	_parts = vector<MeshPart>(mesh._parts);
+	for (auto& part : _parts)
+	{
+		part.indexBuffer->AddRef();
 	}
 }
 
@@ -81,4 +96,9 @@ Material* Mesh::GetPartMaterial(size_t part)
 	}
 
 	return _parts[part].mat;
+}
+
+void TinyEngine::Mesh::SetPartMaterial(size_t part, Material* mat)
+{
+	_parts[part].mat = mat;
 }

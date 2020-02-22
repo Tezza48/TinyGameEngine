@@ -26,6 +26,9 @@ public:
 	DirectX::XMFLOAT3 GetPosition() const;
 	void SetPosition(DirectX::XMFLOAT3 position);
 
+	DirectX::XMFLOAT3 GetScale() const;
+	void SetScale(DirectX::XMFLOAT3 scale);
+
 	DirectX::XMMATRIX GetWorld() const;
 	DirectX::XMMATRIX GetLocalTransform() const;
 
