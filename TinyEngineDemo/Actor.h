@@ -21,7 +21,7 @@ protected:
 
 public:
 	Actor(SpaceGame* game);
-	~Actor();
+	virtual ~Actor();
 
 	DirectX::XMFLOAT3 GetPosition() const;
 	void SetPosition(DirectX::XMFLOAT3 position);
