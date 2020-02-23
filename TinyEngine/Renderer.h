@@ -8,6 +8,7 @@
 #include "IRenderer.h"
 #include "ConstantBuffer.h"
 #include "ICamera.h"
+#include <wrl\client.h>
 
 namespace TinyEngine
 {
@@ -52,17 +53,17 @@ namespace TinyEngine
 		DirectX::XMFLOAT4 ambientLight;
 
 	private:
-		ID3D11Device* _device;
-		ID3D11DeviceContext* _immediateContext;
+		Microsoft::WRL::ComPtr<ID3D11Device> _device;
+		Microsoft::WRL::ComPtr<ID3D11DeviceContext> _immediateContext;
 
-		IDXGISwapChain* _swapChain;
+		Microsoft::WRL::ComPtr<IDXGISwapChain> _swapChain;
 
-		ID3D11RenderTargetView* _backBufferView;
-		ID3D11DepthStencilView* _depthStencilView;
+		Microsoft::WRL::ComPtr<ID3D11RenderTargetView> _backBufferView;
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilView> _depthStencilView;
 
-		ID3D11RasterizerState* _defaultRasterizerState;
+		Microsoft::WRL::ComPtr<ID3D11RasterizerState> _defaultRasterizerState;
 
-		ID3D11SamplerState* _defaultSamplerState;
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> _defaultSamplerState;
 
 		Shader* _defaultShader;
 
@@ -89,12 +90,12 @@ namespace TinyEngine
 		virtual void OnNotify(const Event& event) override;
 
 #ifdef TINY_ENGINE_EXPOSE_NATIVE
-		ID3D11Device* GetDevice() const override
+		Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() const override
 		{
 			return _device;
 		}
 
-		ID3D11DeviceContext* GetImmediateContext() const override
+		Microsoft::WRL::ComPtr<ID3D11DeviceContext> GetImmediateContext() const override
 		{
 			return _immediateContext;
 		}

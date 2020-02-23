@@ -5,12 +5,13 @@
 
 using std::cout;
 using std::endl;
+using Microsoft::WRL::ComPtr;
 
-TinyEngine::Texture::Texture(IRenderer* renderer): _renderer(renderer), _textureView(nullptr)
+TinyEngine::Texture::Texture(IRenderer* renderer): _renderer(renderer)
 {
 }
 
-TinyEngine::Texture::Texture(IRenderer* renderer, const unsigned char* data, int width, int height) : _renderer(renderer), _textureView(nullptr)
+TinyEngine::Texture::Texture(IRenderer* renderer, const unsigned char* data, int width, int height) : _renderer(renderer)
 {
 	D3D11_TEXTURE2D_DESC desc = {};
 	desc.Width = width;
@@ -28,7 +29,7 @@ TinyEngine::Texture::Texture(IRenderer* renderer, const unsigned char* data, int
 	auto device = _renderer->GetDevice();
 	auto context = _renderer->GetImmediateContext();
 
-	ID3D11Texture2D* texture;
+	ComPtr<ID3D11Texture2D> texture;
 
 	HRESULT hr = device->CreateTexture2D(&desc, nullptr, &texture);
 	if (FAILED(hr) || !texture)
@@ -40,7 +41,7 @@ TinyEngine::Texture::Texture(IRenderer* renderer, const unsigned char* data, int
 
 	unsigned int rowPitch = width * 4 * sizeof(unsigned char);
 
-	context->UpdateSubresource(texture, 0, nullptr, data, rowPitch, 0);
+	context->UpdateSubresource(texture.Get(), 0, nullptr, data, rowPitch, 0);
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 	srvDesc.Format = desc.Format;
@@ -48,7 +49,7 @@ TinyEngine::Texture::Texture(IRenderer* renderer, const unsigned char* data, int
 	srvDesc.Texture2D.MostDetailedMip = 0;
 	srvDesc.Texture2D.MipLevels = -1;
 
-	hr = device->CreateShaderResourceView(texture, &srvDesc, &_textureView);
+	hr = device->CreateShaderResourceView(texture.Get(), &srvDesc, &_textureView);
 	if (FAILED(hr) || !_textureView)
 	{
 		cout << "Failed to Create view to Texture2D" << endl;
@@ -56,17 +57,5 @@ TinyEngine::Texture::Texture(IRenderer* renderer, const unsigned char* data, int
 		return;
 	}
 
-	context->GenerateMips(_textureView);
-
-	texture->Release();
-	texture = nullptr;
-}
-
-TinyEngine::Texture::~Texture()
-{
-	if (_textureView)
-	{
-		_textureView->Release();
-		_textureView = nullptr;
-	}
+	context->GenerateMips(_textureView.Get());
 }

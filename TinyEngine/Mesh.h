@@ -3,6 +3,7 @@
 #include <vector>
 #include "VertexStandard.h"
 #include <d3d11.h>
+#include <wrl/client.h>
 
 namespace TinyEngine
 {
@@ -12,14 +13,14 @@ namespace TinyEngine
 	{
 	private:
 		struct MeshPart {
-			ID3D11Buffer* indexBuffer;
+			Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
 			unsigned int size;
 			unsigned int baseVertex;
 		};
 
 		Renderer* _renderer;
 
-		ID3D11Buffer* _vertexBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer> _vertexBuffer;
 		unsigned int _numVertices;
 
 		std::vector<MeshPart> _parts;
@@ -34,7 +35,7 @@ namespace TinyEngine
 		void AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex);
 
 #ifdef TINY_ENGINE_EXPOSE_NATIVE
-		ID3D11Buffer* GetVertexBuffer() const
+		Microsoft::WRL::ComPtr<ID3D11Buffer> GetVertexBuffer() const
 		{
 			return _vertexBuffer;
 		}

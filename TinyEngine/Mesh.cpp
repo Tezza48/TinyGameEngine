@@ -10,18 +10,14 @@ using std::cout;
 using std::endl;
 using std::vector;
 
-Mesh::Mesh(Renderer* renderer) : _renderer(renderer), _numVertices(0), _vertexBuffer(nullptr)
+Mesh::Mesh(Renderer* renderer) : _renderer(renderer), _numVertices(0)
 {
 
 }
 
 Mesh::~Mesh()
 {
-	_vertexBuffer->Release();
 
-	for (size_t i = 0, l = _parts.size(); i < l; i++) {
-		_parts[i].indexBuffer->Release();
-	}
 }
 
 void Mesh::SetVertices(VertexStandard* vertices, unsigned int numVertices)
@@ -60,7 +56,7 @@ void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsign
 	D3D11_SUBRESOURCE_DATA pData = {};
 	pData.pSysMem = indices;
 
-	ID3D11Buffer* indexBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
 
 	HRESULT hr;
 	hr = _renderer->GetDevice()->CreateBuffer(&bd, &pData, &indexBuffer);

@@ -5,7 +5,6 @@
 
 namespace TinyEngine
 {
-
 	class IObserver
 	{
 	public:

@@ -44,7 +44,7 @@ TinyEngine::Shader::Shader(Renderer* renderer, const char* vertexPath, const cha
 {
 	auto device = _renderer->GetDevice();
 
-	size_t vsLength, psLength;
+	size_t vsLength = 0, psLength = 0;
 	char* vsBytes = nullptr;
 	char* psBytes = nullptr;
 
@@ -114,16 +114,4 @@ TinyEngine::Shader::Shader(Renderer* renderer, const char* vertexPath, const cha
 
 	delete[] vsBytes;
 	delete[] psBytes;
-}
-
-TinyEngine::Shader::~Shader()
-{
-	_vertexShader->Release();
-	_vertexShader = nullptr;
-
-	_pixelShader->Release();
-	_pixelShader = nullptr;
-
-	_inputLayout->Release();
-	_inputLayout = nullptr;
 }

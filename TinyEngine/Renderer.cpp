@@ -9,6 +9,8 @@
 #include <iostream>
 #include <comdef.h>
 
+using Microsoft::WRL::ComPtr;
+
 using namespace DirectX;
 
 using std::cout;
@@ -82,7 +84,7 @@ TinyEngine::Renderer::Renderer(int width, int height, Window& window)
 	dstd.CPUAccessFlags = DXGI_CPU_ACCESS_NONE;
 	dstd.MiscFlags = NULL;
 
-	ID3D11Texture2D* depthStencil = nullptr;
+	ComPtr<ID3D11Texture2D> depthStencil;
 
 	hr = _device->CreateTexture2D(&dstd, nullptr, &depthStencil);
 	CHECK_HR(hr, "Failed to create depthStencil texture.");
@@ -94,14 +96,11 @@ TinyEngine::Renderer::Renderer(int width, int height, Window& window)
 		return;
 	}
 
-	hr = _device->CreateDepthStencilView(depthStencil, 0, &_depthStencilView);
+	hr = _device->CreateDepthStencilView(depthStencil.Get(), 0, &_depthStencilView);
 	CHECK_HR(hr, "Failed to create depthStencilView.");
 
-	depthStencil->Release();
-	depthStencil = nullptr;
-
 	// needs re calling on swap chain present. Additionally i think the back buffer view needs to be updated to point to the new one.
-	_immediateContext->OMSetRenderTargets(1, &_backBufferView, _depthStencilView);
+	_immediateContext->OMSetRenderTargets(1, _backBufferView.GetAddressOf(), _depthStencilView.Get());
 
 	D3D11_RASTERIZER_DESC rd = {};
 	rd.FillMode = D3D11_FILL_SOLID;
@@ -159,28 +158,6 @@ TinyEngine::Renderer::~Renderer()
 
 	delete _defaultShader;
 	_defaultShader = nullptr;
-
-
-	_defaultSamplerState->Release();
-	_defaultSamplerState = nullptr;
-
-	_defaultRasterizerState->Release();
-	_defaultRasterizerState = nullptr;
-
-	_depthStencilView->Release();
-	_depthStencilView = nullptr;
-
-	_backBufferView->Release();
-	_backBufferView = nullptr;
-
-	_swapChain->Release();
-	_swapChain = nullptr;
-
-	_immediateContext->Release();
-	_immediateContext = nullptr;
-
-	_device->Release();
-	_device = nullptr;
 }
 
 void TinyEngine::Renderer::SetClearColor(DirectX::XMFLOAT4 color)
@@ -190,22 +167,17 @@ void TinyEngine::Renderer::SetClearColor(DirectX::XMFLOAT4 color)
 
 void TinyEngine::Renderer::Clear()
 {
-	_immediateContext->ClearDepthStencilView(_depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL
-		, 1.0f, 0);
-	_immediateContext->ClearRenderTargetView(_backBufferView, reinterpret_cast<float*>(&_clearColor));
-
+	_immediateContext->ClearDepthStencilView(_depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	_immediateContext->ClearRenderTargetView(_backBufferView.Get(), reinterpret_cast<float*>(&_clearColor));
 }
 
 void TinyEngine::Renderer::SwapBuffers()
 {
 	_swapChain->Present(0, 0);
 
-	_backBufferView->Release();
-	_backBufferView = nullptr;
-
 	BindCurrentBackBufferView();
 
-	_immediateContext->OMSetRenderTargets(1, &_backBufferView, _depthStencilView);
+	_immediateContext->OMSetRenderTargets(1, _backBufferView.GetAddressOf(), _depthStencilView.Get());
 }
 
 void TinyEngine::Renderer::DrawMesh(Mesh* mesh, std::vector<Material*> materials, ICamera* camera, DirectX::XMMATRIX world)
@@ -217,13 +189,12 @@ void TinyEngine::Renderer::DrawMesh(Mesh* mesh, std::vector<Material*> materials
 	const unsigned int stride = sizeof(VertexStandard);
 	const unsigned int offset = 0;
 
-	auto* vertexBuffer = mesh->GetVertexBuffer();
+	auto vertexBuffer = mesh->GetVertexBuffer();
 
-	context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
+	context->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context->IASetInputLayout(_defaultShader->GetInputLayout());
 
-	context->PSSetSamplers(0, 1, &_defaultSamplerState);
+	context->PSSetSamplers(0, 1, _defaultSamplerState.GetAddressOf());
 
 	// TODO: CBuffers
 	PerObjectCBData objCb;
@@ -244,8 +215,8 @@ void TinyEngine::Renderer::DrawMesh(Mesh* mesh, std::vector<Material*> materials
 
 	{
 		auto buffer = _perObjectCB->GetBuffer();
-		context->VSSetConstantBuffers(0, 1, &buffer);
-		context->PSSetConstantBuffers(0, 1, &buffer);
+		context->VSSetConstantBuffers(0, 1, buffer.GetAddressOf());
+		context->PSSetConstantBuffers(0, 1, buffer.GetAddressOf());
 	}
 
 	auto* material = materials[0];
@@ -265,8 +236,9 @@ void TinyEngine::Renderer::DrawMesh(Mesh* mesh, std::vector<Material*> materials
 				shader = _defaultShader;
 			}
 
-			context->VSSetShader(shader->GetVertexShader(), nullptr, 0);
-			context->PSSetShader(shader->GetPixelShader(), nullptr, 0);
+			context->IASetInputLayout(shader->GetInputLayout().Get());
+			context->VSSetShader(shader->GetVertexShader().Get(), nullptr, 0);
+			context->PSSetShader(shader->GetPixelShader().Get(), nullptr, 0);
 
 			PerMaterialCBData matCb;
 			matCb.mat.diffuse = material->diffuse;
@@ -279,26 +251,27 @@ void TinyEngine::Renderer::DrawMesh(Mesh* mesh, std::vector<Material*> materials
 
 			// set textures from material
 			ID3D11ShaderResourceView* textureViews[3] = {
-				material->ambientTexture->GetTextureView(),
-				material->diffuseTexture->GetTextureView(),
-				material->specularTexture->GetTextureView()
+				material->ambientTexture->GetTextureView().Get(),
+				material->diffuseTexture->GetTextureView().Get(),
+				material->specularTexture->GetTextureView().Get()
 			};
 
 			context->PSSetShaderResources(0, 3, textureViews);
 
 			{
 				auto buffer = _perMaterialCB->GetBuffer();
-				context->VSSetConstantBuffers(1, 1, &buffer);
-				context->PSSetConstantBuffers(1, 1, &buffer);
+				context->PSSetConstantBuffers(1, 1, buffer.GetAddressOf());
+				context->VSSetConstantBuffers(1, 1, buffer.GetAddressOf());
 			}
 
-			context->IASetIndexBuffer(part.indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+			context->IASetIndexBuffer(part.indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
 			context->DrawIndexed(part.size, 0, part.baseVertex);
 		}
 	}
 	else
 	{
+		cout << __FILE__ << ":" << __LINE__ << "Drawing just a vertex buffer is not currently supported, Dont do it." << endl;
 		context->Draw(mesh->GetNumVertices(), 0);
 	}
 }
@@ -365,12 +338,6 @@ void TinyEngine::Renderer::UpdateViewport(int x, int y, int width, int height)
 
 void TinyEngine::Renderer::OnResize(int width, int height)
 {
-	_backBufferView->Release();
-	_backBufferView = nullptr;
-
-	_depthStencilView->Release();
-	_depthStencilView = nullptr;
-
 	DXGI_SWAP_CHAIN_DESC scd = {};
 	_swapChain->GetDesc(&scd);
 	_swapChain->ResizeBuffers(2, width, height, scd.BufferDesc.Format, NULL);
@@ -389,20 +356,17 @@ void TinyEngine::Renderer::OnResize(int width, int height)
 	dstd.CPUAccessFlags = DXGI_CPU_ACCESS_NONE;
 	dstd.MiscFlags = NULL;
 
-	ID3D11Texture2D* depthStencil = nullptr;
+	ComPtr<ID3D11Texture2D> depthStencil;
 
 	HRESULT hr;
 	hr = _device->CreateTexture2D(&dstd, nullptr, &depthStencil);
 	CHECK_HR(hr, "Failed to create depthStencil texture.");
 
-	hr = _device->CreateDepthStencilView(depthStencil, 0, &_depthStencilView);
+	hr = _device->CreateDepthStencilView(depthStencil.Get(), 0, &_depthStencilView);
 	CHECK_HR(hr, "Failed to create depthStencilView.");
 
-	depthStencil->Release();
-	depthStencil = nullptr;
-
 	// needs re calling on swap chain present. Additionally i think the back buffer view needs to be updated to point to the new one.
-	_immediateContext->OMSetRenderTargets(1, &_backBufferView, _depthStencilView);
+	_immediateContext->OMSetRenderTargets(1, _backBufferView.GetAddressOf(), _depthStencilView.Get());
 
 	UpdateViewport(0, 0, width, height);
 }

@@ -2,7 +2,7 @@
 
 #include <d3d11.h>
 #include <dxgi.h>
-
+#include <wrl/client.h>
 #include "IRenderer.h"
 
 namespace TinyEngine
@@ -11,17 +11,17 @@ namespace TinyEngine
 	{
 	private:
 		IRenderer* _renderer;
-		ID3D11ShaderResourceView* _textureView;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> _textureView;
 
 	public:
 		Texture(IRenderer* renderer);
 		Texture(IRenderer* renderer, const unsigned char* data, int width, int height);
 
 		Texture(const Texture&) = delete;
-		~Texture();
+		~Texture() = default;
 
 #ifdef TINY_ENGINE_EXPOSE_NATIVE
-		ID3D11ShaderResourceView* GetTextureView() const
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> GetTextureView() const
 		{
 			return _textureView;
 		}

@@ -12,6 +12,8 @@ namespace TinyEngine
 	{
 	public:
 	protected:
+		bool _isRunning;
+
 	private:
 		int _width;
 		int _height;
@@ -19,8 +21,6 @@ namespace TinyEngine
 		Window* _window;
 		BaseInput* _input;
 		Renderer* _renderer;
-
-		bool _isRunning;
 
 		std::chrono::high_resolution_clock::time_point _startTime;
 
