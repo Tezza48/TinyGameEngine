@@ -48,7 +48,7 @@ void FreeCameraActor::OnUpdate(float elapsed, float delta)
 	auto vecWorldRight = XMVector3Rotate(vecLocalRight, vecOrientation);
 
 	float sensetivity = 2.0;
-	float moveSpeed = 20.0f;
+	float moveSpeed = 5.0f;
 
 	_yaw += mouseDelta.x / _game->GetWidth() * sensetivity;
 

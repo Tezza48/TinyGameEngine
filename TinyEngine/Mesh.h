@@ -4,7 +4,6 @@
 #include "VertexStandard.h"
 #include <d3d11.h>
 
-
 namespace TinyEngine
 {
 	class Renderer;
@@ -30,7 +29,7 @@ namespace TinyEngine
 		Mesh(Renderer* renderer);
 		~Mesh();
 
-		Mesh(const Mesh&);
+		Mesh(const Mesh&) = delete;
 
 		void SetVertices(VertexStandard* vertices, unsigned int numVertices);
 		void AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex, Material* mat = nullptr);

@@ -16,6 +16,10 @@ class SpaceGame :
 	public TinyEngine::Game
 {
 private:
+	// Game
+	Actor* _rootActor;
+
+public:
 	// Asset manager?
 	// TODO WT: should all be maps so assets can be requested by name, far easier to work with.
 	std::vector<TinyEngine::Mesh*> _meshes;
@@ -24,9 +28,6 @@ private:
 	TinyEngine::Texture* _nullTexture;
 
 	// Game
-	Actor* _rootActor;
-
-public:
 	TinyEngine::ICamera* _activeCamera;
 
 public:

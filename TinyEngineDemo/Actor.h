@@ -9,10 +9,10 @@ class SpaceGame;
 class Actor
 {
 private:
-	Actor* _parent = nullptr;
-	std::list<Actor*> _children;
 
 protected:
+	Actor* _parent = nullptr;
+	std::list<Actor*> _children;
 	DirectX::XMFLOAT3 _position = { 0.0f, 0.0f, 0.0f };
 	DirectX::XMFLOAT4 _orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
 	DirectX::XMFLOAT3 _scale = { 1.0f, 1.0f, 1.0f };

@@ -24,22 +24,6 @@ Mesh::~Mesh()
 	}
 }
 
-TinyEngine::Mesh::Mesh(const Mesh& mesh)
-{
-	_vertexBuffer = mesh._vertexBuffer;
-	_vertexBuffer->AddRef();
-
-	_numVertices = mesh._numVertices;
-
-	_renderer = mesh._renderer;
-
-	_parts = vector<MeshPart>(mesh._parts);
-	for (auto& part : _parts)
-	{
-		part.indexBuffer->AddRef();
-	}
-}
-
 void Mesh::SetVertices(VertexStandard* vertices, unsigned int numVertices)
 {
 	_numVertices = numVertices;

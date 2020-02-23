@@ -13,6 +13,7 @@
 #include <filesystem>
 #include "FreeCameraActor.h"
 #include <random>
+#include "Universe.h"
 								
 using namespace DirectX;
 using namespace TinyEngine;
@@ -196,62 +197,9 @@ void SpaceGame::OnInit()
 	renderer->lights[2].color = { 0.0f, 0.0f, 0.0f, 0.0f };
 
 	// Universe map scene...
-	auto planetHolder = new Actor(this);
-	planetHolder->SetParent(_rootActor);
-
-	MeshActor* planets[16 * 16 * 16];
-
-	for (int z = 0; z < 16; z++)
-	{
-		for (int y = 0; y < 16; y++)
-		{
-			for (int x = 0; x < 16; x++)
-			{
-				//const r = rand();
-				if (0.2f < (static_cast<float>(rand()) / RAND_MAX))
-				{
-					continue;
-				}
-
-				// TODO WT: Meshes and materials should not exist together cos it makes this stuff confusing and inefficent.
-				// Suggesting either a MeshRenderer component class or the MeshActor maintains a list of material and the mesh itself.
-
-				// Grab a copy of the mesh, will have the same internal buffers
-				auto meshCpy = new Mesh(*sphereMesh);
-				_meshes.push_back(meshCpy);
-
-				// Copy the mesh's material
-				auto mat = new Material(*meshCpy->GetPartMaterial(0));
-				// Set the mat's ambient to a random color
-				mat->ambient = {
-					(static_cast<float>(rand()) / RAND_MAX),
-					(static_cast<float>(rand()) / RAND_MAX),
-					(static_cast<float>(rand()) / RAND_MAX)
-				};
-				_materials.push_back(mat);
-
-				meshCpy->SetPartMaterial(0, mat);
-
-				auto newPlanet = new MeshActor(this);
-				newPlanet->SetMesh(meshCpy);
-				newPlanet->SetParent(planetHolder);
-				planets[z * 16 * 16 + y * 16 + x] = newPlanet;
-
-				float posScale = 16.0f;
-
-				float xPos = ((static_cast<float>(x) - 8.0f) + (float)rand() / RAND_MAX)* posScale;
-				float yPos = ((static_cast<float>(y) - 8.0f) + (float)rand() / RAND_MAX)* posScale;
-				float zPos = ((static_cast<float>(z) - 8.0f) + (float)rand() / RAND_MAX)* posScale;
-
-				newPlanet->SetPosition({ xPos, yPos, zPos });
-
-				auto scale = static_cast<float>(rand()) / RAND_MAX;
-				scale += 0.5f;
-
-				newPlanet->SetScale({ scale, scale, scale });
-			}
-		}
-	}
+	auto universe = new Universe(this, sphereMesh);
+	universe->SetParent(_rootActor);
+	universe->Generate({ });
 }
 
 void SpaceGame::OnUpdate(float elapsed, float delta)
