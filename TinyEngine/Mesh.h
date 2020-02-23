@@ -15,7 +15,6 @@ namespace TinyEngine
 			ID3D11Buffer* indexBuffer;
 			unsigned int size;
 			unsigned int baseVertex;
-			Material* mat;
 		};
 
 		Renderer* _renderer;
@@ -32,10 +31,7 @@ namespace TinyEngine
 		Mesh(const Mesh&) = delete;
 
 		void SetVertices(VertexStandard* vertices, unsigned int numVertices);
-		void AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex, Material* mat = nullptr);
-
-		Material* GetPartMaterial(size_t part);
-		void SetPartMaterial(size_t part, Material* mat);
+		void AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex);
 
 #ifdef TINY_ENGINE_EXPOSE_NATIVE
 		ID3D11Buffer* GetVertexBuffer() const

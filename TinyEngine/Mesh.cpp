@@ -47,7 +47,7 @@ void Mesh::SetVertices(VertexStandard* vertices, unsigned int numVertices)
 	}
 }
 
-void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex, Material* mat)
+void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex)
 {
 	D3D11_BUFFER_DESC bd;
 	bd.ByteWidth = numIndices * sizeof(unsigned int);
@@ -69,20 +69,5 @@ void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsign
 		cout << "Failed to create Index Buffer." << endl;
 	}
 
-	_parts.push_back({ indexBuffer, numIndices, baseVertex, mat });
-}
-
-Material* Mesh::GetPartMaterial(size_t part)
-{
-	if (part >= _parts.size())
-	{
-		cout << "Trying to get material at index: " << part << " which is out of bounds" << endl;
-	}
-
-	return _parts[part].mat;
-}
-
-void TinyEngine::Mesh::SetPartMaterial(size_t part, Material* mat)
-{
-	_parts[part].mat = mat;
+	_parts.push_back({ indexBuffer, numIndices, baseVertex });
 }

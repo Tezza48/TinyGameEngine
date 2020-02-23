@@ -208,7 +208,7 @@ void TinyEngine::Renderer::SwapBuffers()
 	_immediateContext->OMSetRenderTargets(1, &_backBufferView, _depthStencilView);
 }
 
-void TinyEngine::Renderer::DrawMesh(Mesh* mesh, ICamera* camera, XMMATRIX world)
+void TinyEngine::Renderer::DrawMesh(Mesh* mesh, std::vector<Material*> materials, ICamera* camera, DirectX::XMMATRIX world)
 {
 	// TODO WT: Dont draw here, build a batch that's sorted by shader and vertex buffer to optimize drawing.
 	// Let shaders deal with uploading the data they need.
@@ -248,13 +248,17 @@ void TinyEngine::Renderer::DrawMesh(Mesh* mesh, ICamera* camera, XMMATRIX world)
 		context->PSSetConstantBuffers(0, 1, &buffer);
 	}
 
+	auto* material = materials[0];
 	if (mesh->GetNumMeshParts() > 0)
 	{
 		for (int i = 0; i < mesh->GetNumMeshParts(); i++)
 		{
 			auto part = mesh->GetMeshPart(i);
+			if (i < materials.size()) {
+				material = materials[i];
+			}
 
-			auto shader = part.mat->shader;
+			auto shader = material->shader;
 			if (!shader)
 			{
 				shader = _defaultShader;
@@ -264,19 +268,19 @@ void TinyEngine::Renderer::DrawMesh(Mesh* mesh, ICamera* camera, XMMATRIX world)
 			context->PSSetShader(shader->GetPixelShader(), nullptr, 0);
 
 			PerMaterialCBData matCb;
-			matCb.mat.diffuse = part.mat->diffuse;
-			matCb.mat.ambient = part.mat->ambient;
-			matCb.mat.specular = part.mat->specular;
-			matCb.mat.specularExponent = part.mat->specularExponent;
-			matCb.mat.transparency = part.mat->transparency;
+			matCb.mat.diffuse = material->diffuse;
+			matCb.mat.ambient = material->ambient;
+			matCb.mat.specular = material->specular;
+			matCb.mat.specularExponent = material->specularExponent;
+			matCb.mat.transparency = material->transparency;
 
 			_perMaterialCB->Upload(matCb);
 
 			// set textures from material
 			ID3D11ShaderResourceView* textureViews[3] = {
-				part.mat->ambientTexture->GetTextureView(),
-				part.mat->diffuseTexture->GetTextureView(),
-				part.mat->specularTexture->GetTextureView()
+				material->ambientTexture->GetTextureView(),
+				material->diffuseTexture->GetTextureView(),
+				material->specularTexture->GetTextureView()
 			};
 
 			context->PSSetShaderResources(0, 3, textureViews);

@@ -83,7 +83,7 @@ namespace TinyEngine
 		void Clear();
 		void SwapBuffers();
 
-		void DrawMesh(Mesh* mesh, ICamera* camera, DirectX::XMMATRIX world);
+		void DrawMesh(Mesh* mesh, std::vector<Material*> materials, ICamera* camera, DirectX::XMMATRIX world);
 
 		// Inherited via IObserver
 		virtual void OnNotify(const Event& event) override;
