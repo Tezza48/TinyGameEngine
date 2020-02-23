@@ -3,13 +3,36 @@
 #include "MeshActor.h"
 #include <functional>
 #include "SpaceGame.h"
+#include "Renderer.h"
 
 using namespace DirectX;
 using namespace TinyEngine;
 
-Universe::Universe(SpaceGame* game, TinyEngine::Mesh* starMesh) : Actor(game), _starMesh(starMesh)
+Universe::Universe(SpaceGame* game, Mesh* starMesh, Material* material) : Actor(game), _starMesh(starMesh), _baseMaterial(material)
 {
+	_materialInstances[0] = new Material(*material);
+	_materialInstances[1] = new Material(*material);
+	_materialInstances[2] = new Material(*material);
+	_materialInstances[3] = new Material(*material);
+	_materialInstances[4] = new Material(*material);
+	_materialInstances[5] = new Material(*material);
+	_materialInstances[6] = new Material(*material);
 
+	_materialInstances[0]->ambient = { 1.0f, 0.0f, 0.0f };
+	_materialInstances[1]->ambient = { 0.0f, 1.0f, 0.0f };
+	_materialInstances[2]->ambient = { 0.0f, 0.0f, 1.0f };
+	_materialInstances[3]->ambient = { 1.0f, 1.0f, 0.0f };
+	_materialInstances[4]->ambient = { 0.0f, 1.0f, 1.0f };
+	_materialInstances[5]->ambient = { 1.0f, 0.0f, 1.0f };
+	_materialInstances[6]->ambient = { 1.0f, 1.0f, 1.0f };
+}
+
+Universe::~Universe()
+{
+	for (auto& material : _materialInstances)
+	{
+		delete material;
+	}
 }
 
 void Universe::Clear()
@@ -28,6 +51,7 @@ void Universe::Generate(DirectX::XMFLOAT3 position)
 	_lastPosition = position;
 
 	std::uniform_real_distribution<float> normDist(0.0f, 1.0f);
+	std::uniform_int_distribution<int> materialDist(0, NUM_MATERIAL_INSTANCES - 1);
 
 	const int size = 16;
 	const int halfSize = size / 2;
@@ -51,28 +75,11 @@ void Universe::Generate(DirectX::XMFLOAT3 position)
 					continue;
 				}
 
-				// TODO WT: Meshes and materials should not exist together cos it makes this stuff confusing and inefficent.
-				// Suggesting either a MeshRenderer component class or the MeshActor maintains a list of material and the mesh itself.
-
-				// Grab a copy of the mesh, will have the same internal buffers
-				//auto meshCpy = new Mesh(*_starMesh);
-				//_meshInstances.push_back(meshCpy);
-				//
-				//// Copy the mesh's material
-				//auto mat = new Material(*meshCpy->GetPartMaterial(0));
-				//// Set the mat's ambient to a random color
-				//mat->ambient = {
-				//	random(),
-				//	random(),
-				//	random()
-				//};
-				//_materialInstances.push_back(mat);
-				//
-				//meshCpy->SetPartMaterial(0, mat);
-
 				auto newPlanet = new MeshActor(_game);
 				newPlanet->SetMesh(_starMesh);
 				newPlanet->SetParent(this);
+				auto materialId = materialDist(generator);
+				newPlanet->SetMaterials({ _materialInstances[materialId] });
 
 				XMFLOAT3 realPos = {
 					x + position.x + random() - 0.5f,
@@ -82,7 +89,7 @@ void Universe::Generate(DirectX::XMFLOAT3 position)
 
 				newPlanet->SetPosition(realPos);
 
-				auto scale = 0.1f;//  *random();
+				auto scale = 0.1f * random();
 
 				newPlanet->SetScale({ scale, scale, scale });
 			}

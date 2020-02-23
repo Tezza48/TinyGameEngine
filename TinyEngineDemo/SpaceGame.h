@@ -12,9 +12,21 @@
 #include "FreeCameraActor.h"
 #include "MeshActor.h"
 
+namespace objl
+{
+	struct Material;
+}
+
 class SpaceGame :
 	public TinyEngine::Game
 {
+public:
+	struct MeshAsset
+	{
+		TinyEngine::Mesh* mesh;
+		std::vector<TinyEngine::Material*> materials;
+	};
+
 private:
 	// Game
 	Actor* _rootActor;
@@ -22,8 +34,7 @@ private:
 public:
 	// Asset manager?
 	// TODO WT: should all be maps so assets can be requested by name, far easier to work with.
-	std::vector<TinyEngine::Mesh*> _meshes;
-	std::vector<TinyEngine::Material*> _materials;
+	std::vector<MeshAsset> _meshes;
 	std::unordered_map<std::string, TinyEngine::Texture*> _textures;
 	TinyEngine::Texture* _nullTexture;
 
@@ -37,7 +48,9 @@ public:
 
 	TinyEngine::Texture* LoadTexture(const char* path);
 
-	std::vector<TinyEngine::Mesh*> LoadMeshes(const char* path);
+	MeshAsset LoadMesh(const char* path);
+
+	TinyEngine::Material* ConvertMaterial(const char* path, const objl::Material& objlMat);
 
 	// Inherited via Game
 	virtual void OnInit() override;

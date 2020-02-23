@@ -12,11 +12,16 @@ class Universe :
 {
 private:
 	TinyEngine::Mesh* _starMesh;
+	TinyEngine::Material* _baseMaterial;
 
 	DirectX::XMFLOAT3 _lastPosition = {};
 
+	static const int NUM_MATERIAL_INSTANCES = 7;
+	TinyEngine::Material* _materialInstances[NUM_MATERIAL_INSTANCES];
+
 public:
-	Universe(SpaceGame* game, TinyEngine::Mesh* starMesh);
+	Universe(SpaceGame* game, TinyEngine::Mesh* starMesh, TinyEngine::Material* material);
+	virtual ~Universe();
 
 	void Clear();
 	void Generate(DirectX::XMFLOAT3 position);

@@ -14,7 +14,7 @@
 #include "FreeCameraActor.h"
 #include <random>
 #include "Universe.h"
-								
+
 using namespace DirectX;
 using namespace TinyEngine;
 
@@ -40,16 +40,14 @@ SpaceGame::~SpaceGame()
 	delete _nullTexture;
 	_nullTexture = nullptr;
 
-	for (auto* mesh : _meshes)
+	for (auto mesh : _meshes)
 	{
-		delete mesh;
-		mesh = nullptr;
-	}
-
-	for (auto* mat : _materials)
-	{
-		delete mat;
-		mat = nullptr;
+		delete mesh.mesh;
+		
+		for (auto mat : mesh.materials)
+		{
+			delete mat;
+		}
 	}
 
 	for (auto textureKeyVal : _textures)
@@ -83,11 +81,9 @@ Texture* SpaceGame::LoadTexture(const char* path)
 	return tex;
 }
 
-std::vector<Mesh*> SpaceGame::LoadMeshes(const char* path)
+SpaceGame::MeshAsset SpaceGame::LoadMesh(const char* path)
 {
 	objl::Loader loader;
-
-	vector<Mesh*> meshes;
 
 	auto* renderer = GetRenderer();
 
@@ -95,8 +91,8 @@ std::vector<Mesh*> SpaceGame::LoadMeshes(const char* path)
 	{
 		vector<VertexStandard> vertices;
 
-		auto mesh = new Mesh(renderer);
-		meshes.push_back(mesh);
+		MeshAsset asset;
+		asset.mesh = new Mesh(renderer);
 
 		for (objl::Mesh& meshData : loader.LoadedMeshes)
 		{
@@ -112,56 +108,66 @@ std::vector<Mesh*> SpaceGame::LoadMeshes(const char* path)
 
 			const auto& objlMat = meshData.MeshMaterial;
 
-			auto* mat = new Material{};
-			mat->transparency = objlMat.d;
+			auto* mat = ConvertMaterial(path, objlMat);
 
-			if (objlMat.map_Ka != "")
-			{
-				std::filesystem::path texPath(path);
-				texPath.remove_filename().append(objlMat.map_Ka);
-				mat->ambientTexture = LoadTexture(texPath.string().c_str());
-			}
-			else
-			{
-				mat->ambientTexture = _nullTexture;
-				mat->ambient = XMFLOAT3(&objlMat.Ka.X);
-			}
-
-			if (objlMat.map_Kd != "")
-			{
-				std::filesystem::path texPath(path);
-				texPath.remove_filename().append(objlMat.map_Kd);
-				mat->diffuseTexture = LoadTexture(texPath.string().c_str());
-			}
-			else
-			{
-				mat->diffuseTexture = _nullTexture;
-				mat->diffuse = XMFLOAT3(&objlMat.Kd.X);
-			}
-
-			if (objlMat.map_Ks != "")
-			{
-				std::filesystem::path texPath(path);
-				texPath.remove_filename().append(objlMat.map_Ks);
-				mat->specularTexture = LoadTexture(texPath.string().c_str());
-			}
-			else
-			{
-				mat->specularTexture = _nullTexture;
-				mat->specular = XMFLOAT3(&objlMat.Ks.X);
-				mat->specularExponent = objlMat.Ns;
-			}
-
-			_materials.push_back(mat);
-
-			mesh->AddIndexBuffer(meshData.Indices.data(), static_cast<unsigned int>(meshData.Indices.size()), static_cast<unsigned int>(base), mat);
+			asset.materials.push_back(mat);
+			asset.mesh->AddIndexBuffer(meshData.Indices.data(), static_cast<unsigned int>(meshData.Indices.size()), static_cast<unsigned int>(base));
 		}
 
-		mesh->SetVertices(vertices.data(), static_cast<unsigned int>(vertices.size()));
+		asset.mesh->SetVertices(vertices.data(), static_cast<unsigned int>(vertices.size()));
+		_meshes.push_back(asset);
+
+		return asset;
+	}
+	else
+	{
+		cout << "Could not load mesh: " << path << endl;
+	}
+}
+
+Material* SpaceGame::ConvertMaterial(const char* path, const objl::Material& objlMat)
+{
+	auto* mat = new Material{};
+	mat->transparency = objlMat.d;
+
+	if (objlMat.map_Ka != "")
+	{
+		std::filesystem::path texPath(path);
+		texPath.remove_filename().append(objlMat.map_Ka);
+		mat->ambientTexture = LoadTexture(texPath.string().c_str());
+	}
+	else
+	{
+		mat->ambientTexture = _nullTexture;
+		mat->ambient = XMFLOAT3(&objlMat.Ka.X);
 	}
 
-	_meshes.insert(_meshes.end(), meshes.begin(), meshes.end());
-	return meshes;
+	if (objlMat.map_Kd != "")
+	{
+		std::filesystem::path texPath(path);
+		texPath.remove_filename().append(objlMat.map_Kd);
+		mat->diffuseTexture = LoadTexture(texPath.string().c_str());
+	}
+	else
+	{
+		mat->diffuseTexture = _nullTexture;
+		mat->diffuse = XMFLOAT3(&objlMat.Kd.X);
+	}
+
+	if (objlMat.map_Ks != "")
+	{
+		std::filesystem::path texPath(path);
+		texPath.remove_filename().append(objlMat.map_Ks);
+		mat->specularTexture = LoadTexture(texPath.string().c_str());
+	}
+	else
+	{
+		mat->specularTexture = _nullTexture;
+		mat->specular = XMFLOAT3(&objlMat.Ks.X);
+		mat->specularExponent = objlMat.Ns;
+	}
+
+	return mat;
 }
 
 // Inherited via Game
@@ -181,11 +187,11 @@ void SpaceGame::OnInit()
 
 	D3D11_INPUT_ELEMENT_DESC inputDescs[3] = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA },
-	{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA },
-	{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA }
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA }
 	};
 
-	auto sphereMesh = LoadMeshes("./assets/mesh/sphere_1u.obj")[0];
+	auto sphereMesh = LoadMesh("./assets/mesh/sphere_1u.obj");
 
 	XMStoreFloat3(&renderer->lights[0].direction, XMVector3Normalize(XMVectorSet(-1.0f, 0.0f, 0.0f, 0.0f)));
 	renderer->lights[0].color = { 1.0, 1.0, 1.0, 0.0f };
@@ -197,7 +203,7 @@ void SpaceGame::OnInit()
 	renderer->lights[2].color = { 0.0f, 0.0f, 0.0f, 0.0f };
 
 	// Universe map scene...
-	auto universe = new Universe(this, sphereMesh);
+	auto universe = new Universe(this, sphereMesh.mesh, sphereMesh.materials[0]);
 	universe->SetParent(_rootActor);
 	universe->Generate({ });
 }
