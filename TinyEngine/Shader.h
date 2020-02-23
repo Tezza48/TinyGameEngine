@@ -39,8 +39,5 @@ namespace TinyEngine
 			return _inputLayout;
 		}
 #endif
-
-	private:
-		Shader(Renderer* renderer);
 	};
 }

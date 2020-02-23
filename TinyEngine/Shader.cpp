@@ -11,7 +11,7 @@ using std::endl;
 using std::ifstream;
 
 TinyEngine::Shader::Shader(Renderer* renderer, const char* vSBytecode, size_t vSSize, const char* pSBytecode, size_t pSSize, D3D11_INPUT_ELEMENT_DESC* inputDescs, unsigned int inputDescCount):
-	Shader(renderer)
+	_renderer(renderer)
 {
 	auto device = _renderer->GetDevice();
 
@@ -40,7 +40,7 @@ TinyEngine::Shader::Shader(Renderer* renderer, const char* vSBytecode, size_t vS
 }
 
 TinyEngine::Shader::Shader(Renderer* renderer, const char* vertexPath, const char* pixelPath, D3D11_INPUT_ELEMENT_DESC* inputDescs, unsigned int inputDescCount) :
-	Shader(renderer)
+	_renderer(renderer)
 {
 	auto device = _renderer->GetDevice();
 
@@ -126,9 +126,4 @@ TinyEngine::Shader::~Shader()
 
 	_inputLayout->Release();
 	_inputLayout = nullptr;
-}
-
-TinyEngine::Shader::Shader(Renderer* renderer) : _renderer(renderer)
-{
-	
 }

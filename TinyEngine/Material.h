@@ -10,14 +10,24 @@ namespace TinyEngine
 	{
 	public:
 		Shader* shader = nullptr;
+		
+		DirectX::XMFLOAT3 ambient = {};
+		Texture* ambientTexture = nullptr;
+
+		DirectX::XMFLOAT3 diffuse = {};
+		Texture* diffuseTexture = nullptr;
+		
 		DirectX::XMFLOAT3 specular = {};
 		float specularExponent = 0.0f;
-		DirectX::XMFLOAT3 ambient = {};
+		Texture* specularTexture = nullptr;
+
 		float transparency = 0.0f;
-		DirectX::XMFLOAT3 diffuse = {};
-		Texture* diffuseTexture;
-		Texture* specularTexture;
-		Texture* ambientTexture;
+
+	public:
+		Material();
+		Material(const Material& material);
+
+		~Material();
 	};
 }
 
