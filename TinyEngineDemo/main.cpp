@@ -342,7 +342,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	auto game = DemoGame(800, 600, "Game");
+	auto game = DemoGame(1600, 900, "Game");
 	game.Run();
 
 	return 0;
