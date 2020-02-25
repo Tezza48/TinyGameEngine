@@ -25,6 +25,14 @@ Universe::Universe(SpaceGame* game, Mesh* starMesh, Material* material) : Actor(
 	_materialInstances[4]->ambient = { 0.0f, 1.0f, 1.0f };
 	_materialInstances[5]->ambient = { 1.0f, 0.0f, 1.0f };
 	_materialInstances[6]->ambient = { 1.0f, 1.0f, 1.0f };
+
+	_materialInstances[0]->diffuse = { 1.0f, 0.0f, 0.0f };
+	_materialInstances[1]->diffuse = { 0.0f, 1.0f, 0.0f };
+	_materialInstances[2]->diffuse = { 0.0f, 0.0f, 1.0f };
+	_materialInstances[3]->diffuse = { 1.0f, 1.0f, 0.0f };
+	_materialInstances[4]->diffuse = { 0.0f, 1.0f, 1.0f };
+	_materialInstances[5]->diffuse = { 1.0f, 0.0f, 1.0f };
+	_materialInstances[6]->diffuse = { 1.0f, 1.0f, 1.0f };
 }
 
 Universe::~Universe()

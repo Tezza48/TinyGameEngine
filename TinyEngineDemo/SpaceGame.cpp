@@ -196,13 +196,16 @@ void SpaceGame::OnInit()
 	auto sphereMesh = LoadMesh("./assets/mesh/sphere_1u.obj");
 
 	XMStoreFloat3(&renderer->lights[0].direction, XMVector3Normalize(XMVectorSet(-1.0f, 0.0f, 0.0f, 0.0f)));
-	renderer->lights[0].color = { 1.0, 1.0, 1.0, 0.0f };
+	renderer->lights[0].color = { 1.0, 1.0, 1.0, 1.0f };
 
-	renderer->ambientLight = { 1.0f, 1.0f, 1.0f, 1.0f };
+	renderer->ambientLight = { 1.0f, 1.0f, 1.0f, 0.05f };
 	renderer->SetClearColor({ 0.0f, 0.0f, 0.0f, 1.0f });
 
-	renderer->lights[1].color = { 0.0f, 0.0f, 0.0f, 0.0f };
-	renderer->lights[2].color = { 0.0f, 0.0f, 0.0f, 0.0f };
+	XMStoreFloat3(&renderer->lights[1].direction, XMVector3Normalize(XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f)));
+	renderer->lights[1].color = { 0.0f, 1.0f, 0.0f, 0.2f };
+
+	XMStoreFloat3(&renderer->lights[2].direction, XMVector3Normalize(XMVectorSet(-1.0f, -1.0f, 0.0f, 0.0f)));
+	renderer->lights[2].color = { 0.5f, 0.1f, 0.0f, 0.3f };
 
 	// Universe map scene...
 	auto universe = new Universe(this, sphereMesh.mesh, sphereMesh.materials[0]);
