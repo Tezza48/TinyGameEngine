@@ -34,6 +34,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Event.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Game.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ICamera.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)IObserver.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IRenderer.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Key.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Material.h" />

@@ -4,6 +4,7 @@
 
 namespace TinyEngine
 {
+	// Keyboard key codes.
 	enum class Key
 	{
 		ESC = VK_ESCAPE,

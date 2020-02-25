@@ -22,10 +22,16 @@ namespace TinyEngine
 
 		void PeekMessages();
 
+		// Set whether the mouse is being captured by the window.
+		// Locks the cursor to the centre of the window.
 		void SetCaptureMouse(bool shouldCapture);
+
+		// Get whether the mouse is being captured by the window.
 		bool GetCaptureMouse() const;
 
+		// Set whether the mouse cursor is visible or not.
 		void SetMouseVisible(bool isVisible);
+		// Get whether the mouse cursor is visible or not.
 		bool GetMouseVisible() const;
 
 #ifdef TINY_ENGINE_EXPOSE_NATIVE

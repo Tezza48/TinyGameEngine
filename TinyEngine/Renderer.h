@@ -12,6 +12,7 @@
 
 namespace TinyEngine
 {
+	// Represents a light source at infinity. Behaves like the sun.
 	struct DirectionLight
 	{
 		DirectX::XMFLOAT4 color;
@@ -19,6 +20,7 @@ namespace TinyEngine
 		float _pad;
 	};
 
+	// Internal
 	struct PerObjectCBData
 	{
 	public:
@@ -32,6 +34,7 @@ namespace TinyEngine
 		float _pad = 0.0f;
 	};
 
+	// Internal
 	struct PerMaterialCBData
 	{
 		struct
@@ -45,11 +48,15 @@ namespace TinyEngine
 		float _pad = 0.0f;
 	};
 
+	// 3D Renderer. Draws things on the screen.
 	class Renderer : 
 		public IObserver, public IRenderer
 	{
 	public:
+		// Lights which will be used when drawing the scene.
 		DirectionLight lights[3];
+
+		// Ambient light color.
 		DirectX::XMFLOAT4 ambientLight;
 
 	private:
@@ -77,13 +84,23 @@ namespace TinyEngine
 		virtual ~Renderer();
 
 		Renderer(const Renderer&) = delete;
-		//void DrawMesh(Mesh* mesh, )
 
+		// Set the color that the window will be set to at the start of the frame.
 		void SetClearColor(DirectX::XMFLOAT4 color);
 
+		// Clear the screen.
 		void Clear();
+
+		// Swap the back and front buffer.
 		void SwapBuffers();
 
+		// Draw a mesh.
+		//	Mesh* mesh: Mesh to draw
+		//	std::vector<Material*> materials: Materials to draw the mesh with.
+		//		Min 1. One material per parts in the mesh.
+		//		If there are too few it will re use the last material in the array.
+		//	ICamera* camera: Camera to draw the mesh with.
+		//	DirectX::XMMATRIX world: World matrix of the mesh.
 		void DrawMesh(Mesh* mesh, std::vector<Material*> materials, ICamera* camera, DirectX::XMMATRIX world);
 
 		// Inherited via IObserver

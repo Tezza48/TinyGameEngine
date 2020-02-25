@@ -7,6 +7,10 @@
 
 namespace TinyEngine
 {
+	// A Class representing a D3D Constant buffer.
+	// Allows you to upload data to a cbuffer in a shader.
+	// Only needed when writing custom shaders.
+	//	T: Datatype of this buffer - Should match the structure of your Shader's cbuffer
 	template<typename T>
 	class ConstantBuffer
 	{
@@ -16,9 +20,13 @@ namespace TinyEngine
 		Microsoft::WRL::ComPtr<ID3D11Buffer> _buffer;
 
 	public:
+		// Construct an instance of ConstantBuffer.
+		//	IRenderer* renderer: Renderer this is assiociated with
 		ConstantBuffer(IRenderer* renderer);
 		~ConstantBuffer() = default;
 
+		// Upload new data to this buffer.
+		//	const T& data: New data for the buffer
 		void Upload(const T& data);
 
 #ifdef TINY_ENGINE_EXPOSE_NATIVE

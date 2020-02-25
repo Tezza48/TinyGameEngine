@@ -16,6 +16,8 @@ Game::Game(int width, int height, const char* title) :
 
 	_window->AddObserver(*this);
 	_window->AddObserver(*_renderer);
+
+	_input = &_nullInput;
 }
 
 Game::~Game()
@@ -25,12 +27,6 @@ Game::~Game()
 
 	delete _renderer;
 	_renderer = nullptr;
-
-	if (_input)
-	{
-		delete _input;
-		_input = nullptr;
-	}
 }
 
 void Game::Run()
@@ -58,7 +54,8 @@ void Game::Run()
 
 		_renderer->Clear();
 
-		// TODO: Delta Time.
+		_input->OnUpdate();
+
 		OnUpdate(elapsed, delta);
 
 		lastTime = thisTime;
@@ -69,6 +66,10 @@ void Game::Run()
 
 void Game::SetInputHandler(BaseInput* input)
 {
+	if (_input) {
+		_window->RemoveObserver(*_input);
+	}
+
 	_input = input;
 
 	_window->AddObserver(*_input);
