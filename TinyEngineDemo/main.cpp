@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <iostream>
 #include <string>
-#include "SpaceGame.h"
+#include "Game.h"
 
 #ifdef TINY_ENGINE_EXPOSE_NATIVE
 #error "TINY_ENGINE_EXPOSE_NATIVE has leaked to main."
@@ -26,7 +26,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	auto game = SpaceGame(1600, 900, "Game");
+	auto game = Game(1600, 900, "Game");
 	game.Run();
 
 	return 0;

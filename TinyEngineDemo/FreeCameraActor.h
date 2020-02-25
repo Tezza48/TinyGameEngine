@@ -2,6 +2,7 @@
 #include "Actor.h"
 #include "ICamera.h"
 #include "Subject.h"
+#include "Game.h"
 
 class FreeCameraActor :
 	public Actor, public TinyEngine::ICamera, public TinyEngine::IObserver
@@ -12,7 +13,7 @@ private:
 	float _pitch = 0.0f;
 
 public:
-	FreeCameraActor(SpaceGame* game) : Actor(game) {}
+	FreeCameraActor(Game* game) : Actor(game) {}
 
 	void SetAspectRatio(float aspectRatio);
 

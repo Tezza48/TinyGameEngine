@@ -1,4 +1,4 @@
-#include "SpaceGame.h"
+#include "Game.h"
 
 #pragma warning(disable: 4067 4244)
 #include "vendor/OBJ_Loader.h";
@@ -12,8 +12,6 @@
 #include <DirectXMath.h>
 #include <filesystem>
 #include "FreeCameraActor.h"
-#include <random>
-#include "Universe.h"
 
 using namespace DirectX;
 using namespace TinyEngine;
@@ -21,9 +19,8 @@ using namespace TinyEngine;
 using std::cout;
 using std::endl;
 using std::vector;
-using std::linear_congruential_engine;
 
-SpaceGame::SpaceGame(int width, int height, const char* title) : TinyEngine::Game(width, height, title), _activeCamera(nullptr)
+Game::Game(int width, int height, const char* title) : TinyEngine::TinyEngineGame(width, height, title), _activeCamera(nullptr)
 {
 	SetInputHandler(&_inputHandler);
 
@@ -32,7 +29,7 @@ SpaceGame::SpaceGame(int width, int height, const char* title) : TinyEngine::Gam
 	_rootActor = new Actor(this);
 }
 
-SpaceGame::~SpaceGame()
+Game::~Game()
 {
 	delete _rootActor;
 	_rootActor = nullptr;
@@ -57,7 +54,7 @@ SpaceGame::~SpaceGame()
 	}
 }
 
-Texture* SpaceGame::LoadTexture(const char* path)
+Texture* Game::LoadTexture(const char* path)
 {
 	if (_textures[path])
 	{
@@ -81,7 +78,7 @@ Texture* SpaceGame::LoadTexture(const char* path)
 	return tex;
 }
 
-SpaceGame::MeshAsset SpaceGame::LoadMesh(const char* path)
+Game::MeshAsset Game::LoadMesh(const char* path)
 {
 	objl::Loader loader;
 
@@ -127,7 +124,7 @@ SpaceGame::MeshAsset SpaceGame::LoadMesh(const char* path)
 	}
 }
 
-Material* SpaceGame::ConvertMaterial(const char* path, const objl::Material& objlMat)
+Material* Game::ConvertMaterial(const char* path, const objl::Material& objlMat)
 {
 	auto* mat = new Material{};
 	mat->transparency = objlMat.d;
@@ -174,43 +171,38 @@ Material* SpaceGame::ConvertMaterial(const char* path, const objl::Material& obj
 
 // Inherited via Game
 
-void SpaceGame::OnInit()
+void Game::OnInit()
 {
 	auto renderer = GetRenderer();
 
 	auto* freeCamera = new FreeCameraActor(this);
 	freeCamera->SetParent(_rootActor);
-	freeCamera->SetPosition({ 0.0f, 0.0f, -50.0f });
+	freeCamera->SetPosition({ 0.0f, 0.0f, -4.0f });
 	freeCamera->SetAspectRatio(static_cast<float>(this->GetWidth()) / static_cast<float>(this->GetHeight()));
-
 	AddObserver(*freeCamera);
-
 	_activeCamera = freeCamera;
-
-	D3D11_INPUT_ELEMENT_DESC inputDescs[3] = {
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA }
-	};
 
 	auto sphereMesh = LoadMesh("./assets/mesh/sphere_1u.obj");
 
-	XMStoreFloat3(&renderer->lights[0].direction, XMVector3Normalize(XMVectorSet(-1.0f, 0.0f, 0.0f, 0.0f)));
-	renderer->lights[0].color = { 1.0, 1.0, 1.0, 0.0f };
+	auto* sphereActor = new MeshActor(this);
+	sphereActor->SetMesh(sphereMesh.mesh);
+	sphereActor->SetMaterials(sphereMesh.materials);
+	sphereActor->SetParent(_rootActor);
 
-	renderer->ambientLight = { 1.0f, 1.0f, 1.0f, 1.0f };
-	renderer->SetClearColor({ 0.0f, 0.0f, 0.0f, 1.0f });
+	XMStoreFloat3(&renderer->lights[0].direction, XMVector3Normalize(XMVectorSet(-1.0f, -1.0f, 0.0f, 0.0f)));
+	renderer->lights[0].color = { 1.0, 1.0, 1.0, 1.0f };
 
-	renderer->lights[1].color = { 0.0f, 0.0f, 0.0f, 0.0f };
-	renderer->lights[2].color = { 0.0f, 0.0f, 0.0f, 0.0f };
+	XMStoreFloat3(&renderer->lights[1].direction, XMVector3Normalize(XMVectorSet(1.0f, -1.0f, 0.0f, 0.0f)));
+	renderer->lights[1].color = { 0.0, 1.0, 1.0, 1.0f };
 
-	// Universe map scene...
-	auto universe = new Universe(this, sphereMesh.mesh, sphereMesh.materials[0]);
-	universe->SetParent(_rootActor);
-	universe->Generate({ });
+	XMStoreFloat3(&renderer->lights[2].direction, XMVector3Normalize(XMVectorSet(-1.0f, -2.0f, -1.0f, 0.0f)));
+	renderer->lights[2].color = { 1.0, 0.0, 1.0, 1.0f };
+
+	renderer->ambientLight = { 0.1f, 0.1f, 0.2f, 0.5f };
+	renderer->SetClearColor({ 0.1f, 0.1f, 0.2f, 1.0f });
 }
 
-void SpaceGame::OnUpdate(float elapsed, float delta)
+void Game::OnUpdate(float elapsed, float delta)
 {
 	auto input = GetInput();
 
@@ -222,11 +214,10 @@ void SpaceGame::OnUpdate(float elapsed, float delta)
 	}
 
 	_rootActor->OnUpdate(elapsed, delta);
-
 	_rootActor->OnDraw(GetRenderer());
 }
 
-Input* SpaceGame::GetInput() const
+Input* Game::GetInput() const
 {
-	return static_cast<Input*>(TinyEngine::Game::GetInput());
+	return static_cast<Input*>(TinyEngineGame::GetInput());
 }

@@ -2,7 +2,7 @@
 
 using namespace DirectX;
 
-Actor::Actor(SpaceGame* game) : _game(game)
+Actor::Actor(Game* game) : _game(game)
 {
 
 }

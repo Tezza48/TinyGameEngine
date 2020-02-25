@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Game.h"
+#include "TinyEngineGame.h"
 #include <vector>
 #include <unordered_map>
 #include "Input.h"
@@ -12,13 +12,14 @@
 #include "FreeCameraActor.h"
 #include "MeshActor.h"
 
+// OBJL is a bit rubbish, since i cant indlude the header i've prototyped what i need here.
 namespace objl
 {
 	struct Material;
 }
 
-class SpaceGame :
-	public TinyEngine::Game
+class Game :
+	public TinyEngine::TinyEngineGame
 {
 public:
 	struct MeshAsset
@@ -43,9 +44,9 @@ public:
 	TinyEngine::ICamera* _activeCamera;
 
 public:
-	SpaceGame(int width, int height, const char* title);
+	Game(int width, int height, const char* title);
 
-	~SpaceGame();
+	~Game();
 
 	TinyEngine::Texture* LoadTexture(const char* path);
 

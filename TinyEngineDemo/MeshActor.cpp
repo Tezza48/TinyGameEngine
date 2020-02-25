@@ -1,5 +1,5 @@
 #include "MeshActor.h"
-#include "SpaceGame.h"
+#include "Game.h"
 
 void MeshActor::SetMesh(TinyEngine::Mesh* mesh)
 {

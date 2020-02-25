@@ -4,7 +4,7 @@
 #include <list>
 #include "Renderer.h"
 
-class SpaceGame;
+class Game;
 
 class Actor
 {
@@ -17,10 +17,10 @@ protected:
 	DirectX::XMFLOAT4 _orientation = { 0.0f, 0.0f, 0.0f, 1.0f };
 	DirectX::XMFLOAT3 _scale = { 1.0f, 1.0f, 1.0f };
 
-	SpaceGame* _game = nullptr;
+	Game* _game = nullptr;
 
 public:
-	Actor(SpaceGame* game);
+	Actor(Game* game);
 	virtual ~Actor();
 
 	DirectX::XMFLOAT3 GetPosition() const;

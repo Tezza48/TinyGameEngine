@@ -1,5 +1,5 @@
 #include "FreeCameraActor.h"
-#include "SpaceGame.h"
+#include "Game.h"
 
 using namespace TinyEngine;
 using namespace DirectX;

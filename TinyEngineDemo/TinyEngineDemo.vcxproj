@@ -150,8 +150,7 @@
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MeshActor.cpp" />
-    <ClCompile Include="SpaceGame.cpp" />
-    <ClCompile Include="Universe.cpp" />
+    <ClCompile Include="Game.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="DefaultPixelShader.hlsl">
@@ -184,8 +183,7 @@
     <ClInclude Include="FreeCameraActor.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="MeshActor.h" />
-    <ClInclude Include="SpaceGame.h" />
-    <ClInclude Include="Universe.h" />
+    <ClInclude Include="Game.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -2,7 +2,7 @@
 #include "Mesh.h"
 #include "Actor.h"
 
-class SpaceGame;
+class Game;
 
 class MeshActor :
 	public Actor
@@ -12,7 +12,7 @@ private:
 	std::vector<TinyEngine::Material*> _materials;
 
 public:
-	MeshActor(SpaceGame* game) : Actor(game), _mesh(nullptr) { }
+	MeshActor(Game* game) : Actor(game), _mesh(nullptr) { }
 
 	void SetMesh(TinyEngine::Mesh* mesh);
 	void SetMaterials(std::vector<TinyEngine::Material*> materials);
