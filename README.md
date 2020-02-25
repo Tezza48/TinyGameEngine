@@ -1,9 +1,10 @@
 # TinyEngine
 
-TinyEngine is a single header game engine implementation project inspired by the OLC Game engines.
+TinyEngine is a lightweight Game engine designed to be easy for beginners to use.
 
-## Venus Demo
+## Simple start
 
-This demo uses the default shader and textures from [Solar System Scope](https://www.solarsystemscope.com/textures/) which are free which is wicked!
+This demo shows a minimal framework built on the base engine similar to Unity.
+It is a good place to start if you're new to the engine.
 
-![Venus Demo](media/venus-demo-01.png)
+![Pretty Sphere!](media/splash.png)
