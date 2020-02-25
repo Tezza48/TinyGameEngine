@@ -1,6 +1,6 @@
 #include "Window.h"
 #include <iostream>
-#include "Game.h"
+#include "TinyEngineGame.h"
 #include "Key.h"
 
 using std::cout;

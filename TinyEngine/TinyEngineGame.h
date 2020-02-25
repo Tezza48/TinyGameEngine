@@ -8,7 +8,7 @@
 namespace TinyEngine
 {
 	// The base class for a TinyEngine Game.
-	class Game :
+	class TinyEngineGame :
 		public IObserver, public Subject
 	{
 	public:
@@ -34,10 +34,10 @@ namespace TinyEngine
 		//	int width: Game window's initial width
 		//	int height: Game window's initial height
 		//	const char* title: Game window's title text
-		Game(int width, int height, const char* title);
-		~Game();
+		TinyEngineGame(int width, int height, const char* title);
+		~TinyEngineGame();
 
-		Game(const Game& game) = delete;
+		TinyEngineGame(const TinyEngineGame& game) = delete;
 
 		// Get the game window's width.
 		int GetWidth() const;

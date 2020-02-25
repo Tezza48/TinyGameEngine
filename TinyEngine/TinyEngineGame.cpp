@@ -1,4 +1,4 @@
-#include "Game.h"
+#include "TinyEngineGame.h"
 #include "EngineEventType.h"
 #include <iostream>
 
@@ -8,7 +8,7 @@ using std::endl;
 using namespace std::chrono;
 using namespace TinyEngine;
 
-Game::Game(int width, int height, const char* title) :
+TinyEngineGame::TinyEngineGame(int width, int height, const char* title) :
 	_width(width), _height(height), _input(nullptr), _isRunning(false)
 {
 	_window = new Window(width, height, title);
@@ -20,7 +20,7 @@ Game::Game(int width, int height, const char* title) :
 	_input = &_nullInput;
 }
 
-Game::~Game()
+TinyEngineGame::~TinyEngineGame()
 {
 	delete _window;
 	_window = nullptr;
@@ -29,7 +29,7 @@ Game::~Game()
 	_renderer = nullptr;
 }
 
-void Game::Run()
+void TinyEngineGame::Run()
 {
 	_isRunning = true;
 
@@ -64,7 +64,7 @@ void Game::Run()
 	}
 }
 
-void Game::SetInputHandler(BaseInput* input)
+void TinyEngineGame::SetInputHandler(BaseInput* input)
 {
 	if (_input) {
 		_window->RemoveObserver(*_input);
@@ -75,17 +75,17 @@ void Game::SetInputHandler(BaseInput* input)
 	_window->AddObserver(*_input);
 }
 
-int Game::GetWidth() const
+int TinyEngineGame::GetWidth() const
 {
 	return _width;
 }
 
-int Game::GetHeight() const
+int TinyEngineGame::GetHeight() const
 {
 	return _height;
 }
 
-void Game::OnNotify(const Event& event)
+void TinyEngineGame::OnNotify(const Event& event)
 {
 	const auto type = static_cast<EngineEventType>(event.GetType());
 
@@ -109,22 +109,22 @@ void Game::OnNotify(const Event& event)
 	}
 }
 
-Renderer* TinyEngine::Game::GetRenderer() const
+Renderer* TinyEngine::TinyEngineGame::GetRenderer() const
 {
 	return _renderer;
 }
 
-Window* TinyEngine::Game::GetWindow() const
+Window* TinyEngine::TinyEngineGame::GetWindow() const
 {
 	return _window;
 }
 
-BaseInput* TinyEngine::Game::GetInput() const
+BaseInput* TinyEngine::TinyEngineGame::GetInput() const
 {
 	return _input;
 }
 
-void TinyEngine::Game::OnResize(int width, int height)
+void TinyEngine::TinyEngineGame::OnResize(int width, int height)
 {
 
 }

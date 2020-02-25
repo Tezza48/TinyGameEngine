@@ -16,7 +16,7 @@
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)BaseInput.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Event.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)Game.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)TinyEngineGame.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ICamera.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Material.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Mesh.cpp" />
@@ -32,7 +32,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)ConstantBuffer.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)EngineEventType.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Event.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)Game.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)TinyEngineGame.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ICamera.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IObserver.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IRenderer.h" />
