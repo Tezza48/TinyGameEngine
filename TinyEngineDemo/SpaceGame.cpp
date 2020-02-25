@@ -23,9 +23,9 @@ using std::endl;
 using std::vector;
 using std::linear_congruential_engine;
 
-SpaceGame::SpaceGame(int width, int height, const char* title) : TinyEngine::Game(width, height, title)
+SpaceGame::SpaceGame(int width, int height, const char* title) : TinyEngine::Game(width, height, title), _activeCamera(nullptr)
 {
-	SetInputHandler(new Input());
+	SetInputHandler(&_inputHandler);
 
 	_nullTexture = new Texture(GetRenderer());
 
@@ -122,6 +122,8 @@ SpaceGame::MeshAsset SpaceGame::LoadMesh(const char* path)
 	else
 	{
 		cout << "Could not load mesh: " << path << endl;
+
+		return MeshAsset();
 	}
 }
 
@@ -211,7 +213,6 @@ void SpaceGame::OnInit()
 void SpaceGame::OnUpdate(float elapsed, float delta)
 {
 	auto input = GetInput();
-	input->OnUpdate();
 
 	if (input->GetKeyDown(Key::ESC))
 	{

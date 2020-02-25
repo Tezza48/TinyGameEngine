@@ -16,13 +16,11 @@ private:
 	DirectX::XMFLOAT2 liveMouse;
 
 public:
-	void OnUpdate();
+	virtual void OnUpdate();
 
-	bool GetKey(TinyEngine::Key key);
-
-	bool GetKeyDown(TinyEngine::Key key);
-
-	bool GetKeyUp(TinyEngine::Key key);
+	virtual bool GetKey(TinyEngine::Key key);
+	virtual bool GetKeyDown(TinyEngine::Key key);
+	virtual bool GetKeyUp(TinyEngine::Key key);
 
 	DirectX::XMFLOAT2 GetMouseDelta();
 
@@ -32,3 +30,22 @@ private:
 	virtual void OnKeyUp(TinyEngine::Key key);
 	virtual void OnMouseMove(float x, float y);
 };
+
+// You could disable input by implementing a null override of Input like this.
+// Pass an instance of this into Game::SetInputHandler and input is effectively disabled.
+//
+//			class NullInput :
+//				public Input
+//			{
+//			public:
+//				virtual void OnUpdate() override {}
+//			
+//				virtual bool GetKey(TinyEngine::Key key) override { return false; }
+//				virtual bool GetKeyDown(TinyEngine::Key key) override { return false; }
+//				virtual bool GetKeyUp(TinyEngine::Key key) override { return false; }
+//			
+//			private:
+//				virtual void OnKeyDown(TinyEngine::Key key) override {}
+//				virtual void OnKeyUp(TinyEngine::Key key) override {}
+//				virtual void OnMouseMove(float x, float y) override {}
+//			};

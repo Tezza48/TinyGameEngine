@@ -30,6 +30,7 @@ public:
 private:
 	// Game
 	Actor* _rootActor;
+	Input _inputHandler;
 
 public:
 	// Asset manager?
