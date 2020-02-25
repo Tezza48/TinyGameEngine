@@ -8,7 +8,7 @@ float3 BlinnPhong(DirectionLight light, float3 normal, float3 toEye, Material ma
 
 	float3 lightColor = light.Color.xyz * light.Color.w;
 
-	float3 diffuse = diffuseFactor * mat.Diffuse;// *lightColor;
+	float3 diffuse = diffuseFactor * mat.Diffuse * lightColor;
 
 	float3 h = normalize(lightVec + toEye);
 

@@ -8,9 +8,11 @@
 #include "IRenderer.h"
 #include "ConstantBuffer.h"
 #include "ICamera.h"
+#include <wrl\client.h>
 
 namespace TinyEngine
 {
+	// Represents a light source at infinity. Behaves like the sun.
 	struct DirectionLight
 	{
 		DirectX::XMFLOAT4 color;
@@ -18,6 +20,7 @@ namespace TinyEngine
 		float _pad;
 	};
 
+	// Internal
 	struct PerObjectCBData
 	{
 	public:
@@ -31,6 +34,7 @@ namespace TinyEngine
 		float _pad = 0.0f;
 	};
 
+	// Internal
 	struct PerMaterialCBData
 	{
 		struct
@@ -44,25 +48,29 @@ namespace TinyEngine
 		float _pad = 0.0f;
 	};
 
+	// 3D Renderer. Draws things on the screen.
 	class Renderer : 
 		public IObserver, public IRenderer
 	{
 	public:
+		// Lights which will be used when drawing the scene.
 		DirectionLight lights[3];
+
+		// Ambient light color.
 		DirectX::XMFLOAT4 ambientLight;
 
 	private:
-		ID3D11Device* _device;
-		ID3D11DeviceContext* _immediateContext;
+		Microsoft::WRL::ComPtr<ID3D11Device> _device;
+		Microsoft::WRL::ComPtr<ID3D11DeviceContext> _immediateContext;
 
-		IDXGISwapChain* _swapChain;
+		Microsoft::WRL::ComPtr<IDXGISwapChain> _swapChain;
 
-		ID3D11RenderTargetView* _backBufferView;
-		ID3D11DepthStencilView* _depthStencilView;
+		Microsoft::WRL::ComPtr<ID3D11RenderTargetView> _backBufferView;
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilView> _depthStencilView;
 
-		ID3D11RasterizerState* _defaultRasterizerState;
+		Microsoft::WRL::ComPtr<ID3D11RasterizerState> _defaultRasterizerState;
 
-		ID3D11SamplerState* _defaultSamplerState;
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> _defaultSamplerState;
 
 		Shader* _defaultShader;
 
@@ -76,25 +84,35 @@ namespace TinyEngine
 		virtual ~Renderer();
 
 		Renderer(const Renderer&) = delete;
-		//void DrawMesh(Mesh* mesh, )
 
+		// Set the color that the window will be set to at the start of the frame.
 		void SetClearColor(DirectX::XMFLOAT4 color);
 
+		// Clear the screen.
 		void Clear();
+
+		// Swap the back and front buffer.
 		void SwapBuffers();
 
-		void DrawMesh(Mesh* mesh, ICamera* camera, DirectX::XMMATRIX world);
+		// Draw a mesh.
+		//	Mesh* mesh: Mesh to draw
+		//	std::vector<Material*> materials: Materials to draw the mesh with.
+		//		Min 1. One material per parts in the mesh.
+		//		If there are too few it will re use the last material in the array.
+		//	ICamera* camera: Camera to draw the mesh with.
+		//	DirectX::XMMATRIX world: World matrix of the mesh.
+		void DrawMesh(Mesh* mesh, std::vector<Material*> materials, ICamera* camera, DirectX::XMMATRIX world);
 
 		// Inherited via IObserver
 		virtual void OnNotify(const Event& event) override;
 
 #ifdef TINY_ENGINE_EXPOSE_NATIVE
-		ID3D11Device* GetDevice() const override
+		Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() const override
 		{
 			return _device;
 		}
 
-		ID3D11DeviceContext* GetImmediateContext() const override
+		Microsoft::WRL::ComPtr<ID3D11DeviceContext> GetImmediateContext() const override
 		{
 			return _immediateContext;
 		}

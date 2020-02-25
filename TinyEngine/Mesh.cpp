@@ -8,21 +8,16 @@ using namespace TinyEngine;
 
 using std::cout;
 using std::endl;
+using std::vector;
 
-Mesh::Mesh(Renderer* renderer) : _renderer(renderer), _numVertices(0), _vertexBuffer(nullptr)
+Mesh::Mesh(Renderer* renderer) : _renderer(renderer), _numVertices(0)
 {
 
 }
 
 Mesh::~Mesh()
 {
-	_vertexBuffer->Release();
-	_vertexBuffer = nullptr;
 
-	for (size_t i = 0, l = _parts.size(); i < l; i++) {
-		_parts[i].indexBuffer->Release();
-		_parts[i].indexBuffer = nullptr;
-	}
 }
 
 void Mesh::SetVertices(VertexStandard* vertices, unsigned int numVertices)
@@ -48,7 +43,7 @@ void Mesh::SetVertices(VertexStandard* vertices, unsigned int numVertices)
 	}
 }
 
-void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex, Material* mat)
+void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsigned int baseVertex)
 {
 	D3D11_BUFFER_DESC bd;
 	bd.ByteWidth = numIndices * sizeof(unsigned int);
@@ -61,7 +56,7 @@ void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsign
 	D3D11_SUBRESOURCE_DATA pData = {};
 	pData.pSysMem = indices;
 
-	ID3D11Buffer* indexBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
 
 	HRESULT hr;
 	hr = _renderer->GetDevice()->CreateBuffer(&bd, &pData, &indexBuffer);
@@ -70,15 +65,5 @@ void Mesh::AddIndexBuffer(unsigned int* indices, unsigned int numIndices, unsign
 		cout << "Failed to create Index Buffer." << endl;
 	}
 
-	_parts.push_back({ indexBuffer, numIndices, baseVertex, mat });
-}
-
-Material* Mesh::GetPartMaterial(size_t part)
-{
-	if (part >= _parts.size())
-	{
-		cout << "Trying to get material at index: " << part << " which is out of bounds" << endl;
-	}
-
-	return _parts[part].mat;
+	_parts.push_back({ indexBuffer, numIndices, baseVertex });
 }

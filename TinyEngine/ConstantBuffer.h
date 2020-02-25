@@ -2,27 +2,35 @@
 
 #include <d3d11.h>
 #include <iostream>
-
+#include <WRL/client.h>
 #include "IRenderer.h"
 
 namespace TinyEngine
 {
+	// A Class representing a D3D Constant buffer.
+	// Allows you to upload data to a cbuffer in a shader.
+	// Only needed when writing custom shaders.
+	//	T: Datatype of this buffer - Should match the structure of your Shader's cbuffer
 	template<typename T>
 	class ConstantBuffer
 	{
 	private:
 		IRenderer* _renderer;
 
-		ID3D11Buffer* _buffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer> _buffer;
 
 	public:
+		// Construct an instance of ConstantBuffer.
+		//	IRenderer* renderer: Renderer this is assiociated with
 		ConstantBuffer(IRenderer* renderer);
-		~ConstantBuffer();
+		~ConstantBuffer() = default;
 
+		// Upload new data to this buffer.
+		//	const T& data: New data for the buffer
 		void Upload(const T& data);
 
 #ifdef TINY_ENGINE_EXPOSE_NATIVE
-		ID3D11Buffer* GetBuffer() const
+		Microsoft::WRL::ComPtr<ID3D11Buffer> GetBuffer() const
 		{
 			return _buffer;
 		}
@@ -55,22 +63,15 @@ inline TinyEngine::ConstantBuffer<T>::ConstantBuffer(IRenderer* renderer): _rend
 }
 
 template<typename T>
-inline TinyEngine::ConstantBuffer<T>::~ConstantBuffer()
-{
-	_buffer->Release();
-	_buffer = nullptr;
-}
-
-template<typename T>
 inline void TinyEngine::ConstantBuffer<T>::Upload(const T& data)
 {
 	D3D11_MAPPED_SUBRESOURCE mappedData;
 
 	auto context = _renderer->GetImmediateContext();
 
-	context->Map(_buffer, 0, D3D11_MAP_WRITE_DISCARD, NULL, &mappedData);
+	context->Map(_buffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, NULL, &mappedData);
 
 	memcpy(mappedData.pData, &data, sizeof(T));
 
-	context->Unmap(_buffer, 0);
+	context->Unmap(_buffer.Get(), 0);
 }

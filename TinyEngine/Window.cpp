@@ -1,6 +1,6 @@
 #include "Window.h"
 #include <iostream>
-#include "Game.h"
+#include "TinyEngineGame.h"
 #include "Key.h"
 
 using std::cout;
@@ -103,8 +103,6 @@ LRESULT TinyEngine::Window::WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM 
 
 		window->_restingMouseX = width / 2;
 		window->_restingMouseY = height / 2;
-
-		cout << width << " " << window->_restingMouseX << endl;
 
 		window->Notify(ResizeEvent(width, height));
 

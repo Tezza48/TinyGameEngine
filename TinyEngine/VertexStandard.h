@@ -4,6 +4,7 @@
 
 namespace TinyEngine
 {
+	// Standard vertex type.
 	struct VertexStandard {
 	public:
 		DirectX::XMFLOAT3 position;
