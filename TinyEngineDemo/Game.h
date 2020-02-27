@@ -45,7 +45,6 @@ public:
 
 public:
 	Game(int width, int height, const char* title);
-
 	~Game();
 
 	TinyEngine::Texture* LoadTexture(const char* path);

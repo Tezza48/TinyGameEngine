@@ -11,7 +11,7 @@
 #include <iostream>
 #include <DirectXMath.h>
 #include <filesystem>
-#include "FreeCameraActor.h"
+#include "CameraActor.h"
 
 using namespace DirectX;
 using namespace TinyEngine;
@@ -175,24 +175,30 @@ void Game::OnInit()
 {
 	auto renderer = GetRenderer();
 
-	auto* freeCamera = new FreeCameraActor(this);
-	freeCamera->SetParent(_rootActor);
-	freeCamera->SetPosition({ 0.0f, 0.0f, -4.0f });
-	freeCamera->SetAspectRatio(static_cast<float>(this->GetWidth()) / static_cast<float>(this->GetHeight()));
-	AddObserver(*freeCamera);
-	_activeCamera = freeCamera;
+	auto* camera = new CameraActor(this);
+	camera->SetParent(_rootActor);
+	camera->SetPosition({ 0.0f, 0.0f, -4.0f });
+	camera->SetAspectRatio(static_cast<float>(this->GetWidth()) / static_cast<float>(this->GetHeight()));
+	AddObserver(*camera);
+	_activeCamera = camera;
 
 	auto sphereMesh = LoadMesh("./assets/mesh/sphere_1u.obj");
+	auto cubeMesh = LoadMesh("./assets/mesh/cube_1u.obj");
 
 	auto* sphereActor = new MeshActor(this);
 	sphereActor->SetMesh(sphereMesh.mesh);
 	sphereActor->SetMaterials(sphereMesh.materials);
 	sphereActor->SetParent(_rootActor);
 
+	auto* paddleActor = new MeshActor(this);
+	paddleActor->SetMesh(cubeMesh.mesh);
+	paddleActor->SetMaterials(cubeMesh.materials);
+	paddleActor->SetParent(_rootActor);
+
 	XMStoreFloat3(&renderer->lights[0].direction, XMVector3Normalize(XMVectorSet(-1.0f, -1.0f, 0.0f, 0.0f)));
 	renderer->lights[0].color = { 1.0, 1.0, 1.0, 1.0f };
 
-	XMStoreFloat3(&renderer->lights[1].direction, XMVector3Normalize(XMVectorSet(1.0f, -1.0f, 0.0f, 0.0f)));
+	XMStoreFloat3(&renderer->lights[1].direction, XMVector3Normalize(XMVectorSet(1.0f, -1.0f, 1.0f, 0.0f)));
 	renderer->lights[1].color = { 0.0, 1.0, 1.0, 1.0f };
 
 	XMStoreFloat3(&renderer->lights[2].direction, XMVector3Normalize(XMVectorSet(-1.0f, -2.0f, -1.0f, 0.0f)));

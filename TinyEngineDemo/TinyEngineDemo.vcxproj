@@ -146,6 +146,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Actor.cpp" />
+    <ClCompile Include="CameraActor.cpp" />
     <ClCompile Include="FreeCameraActor.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="main.cpp" />
@@ -180,6 +181,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Actor.h" />
+    <ClInclude Include="CameraActor.h" />
     <ClInclude Include="FreeCameraActor.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="MeshActor.h" />

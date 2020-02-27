@@ -59,7 +59,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)IObserver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="D:\source\TinyEngine\TinyEngine\TinyEngineGame.h">
+    <ClInclude Include="$(MSBuildThisFileDirectory)TinyEngineGame.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -97,7 +97,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="D:\source\TinyEngine\TinyEngine\TinyEngineGame.cpp">
+    <ClCompile Include="$(MSBuildThisFileDirectory)TinyEngineGame.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
