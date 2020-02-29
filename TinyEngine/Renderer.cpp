@@ -222,7 +222,7 @@ void TinyEngine::Renderer::DrawMesh(Mesh* mesh, std::vector<Material*> materials
 	auto* material = materials[0];
 	if (mesh->GetNumMeshParts() > 0)
 	{
-		for (int i = 0; i < mesh->GetNumMeshParts(); i++)
+		for (size_t i = 0; i < mesh->GetNumMeshParts(); i++)
 		{
 			auto part = mesh->GetMeshPart(i);
 			if (i < materials.size())

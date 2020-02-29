@@ -1,14 +1,14 @@
 #pragma once
-#include <d3d11.h>
 #include <dxgi.h>
 #include "Subject.h"
 #include "Window.h"
 #include "Mesh.h"
 #include "Shader.h"
-#include "IRenderer.h"
+#include "Renderer.h"
 #include "ConstantBuffer.h"
 #include "ICamera.h"
-#include <wrl\client.h>
+#include <d3d11.h>
+#include <wrl/client.h>
 
 namespace TinyEngine
 {
@@ -50,7 +50,7 @@ namespace TinyEngine
 
 	// 3D Renderer. Draws things on the screen.
 	class Renderer : 
-		public IObserver, public IRenderer
+		public IObserver
 	{
 	public:
 		// Lights which will be used when drawing the scene.
@@ -107,12 +107,12 @@ namespace TinyEngine
 		virtual void OnNotify(const Event& event) override;
 
 #ifdef TINY_ENGINE_EXPOSE_NATIVE
-		Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() const override
+		Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() const
 		{
 			return _device;
 		}
 
-		Microsoft::WRL::ComPtr<ID3D11DeviceContext> GetImmediateContext() const override
+		Microsoft::WRL::ComPtr<ID3D11DeviceContext> GetImmediateContext() const
 		{
 			return _immediateContext;
 		}

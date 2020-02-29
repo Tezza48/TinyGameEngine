@@ -3,10 +3,12 @@
 #include <d3d11.h>
 #include <iostream>
 #include <WRL/client.h>
-#include "IRenderer.h"
+#include "Renderer.h"
 
 namespace TinyEngine
 {
+	class Renderer;
+
 	// A Class representing a D3D Constant buffer.
 	// Allows you to upload data to a cbuffer in a shader.
 	// Only needed when writing custom shaders.
@@ -15,14 +17,14 @@ namespace TinyEngine
 	class ConstantBuffer
 	{
 	private:
-		IRenderer* _renderer;
+		Renderer* _renderer;
 
 		Microsoft::WRL::ComPtr<ID3D11Buffer> _buffer;
 
 	public:
 		// Construct an instance of ConstantBuffer.
 		//	IRenderer* renderer: Renderer this is assiociated with
-		ConstantBuffer(IRenderer* renderer);
+		ConstantBuffer(Renderer* renderer);
 		~ConstantBuffer() = default;
 
 		// Upload new data to this buffer.
@@ -40,7 +42,7 @@ namespace TinyEngine
 
 
 template<typename T>
-inline TinyEngine::ConstantBuffer<T>::ConstantBuffer(IRenderer* renderer): _renderer(renderer)
+inline TinyEngine::ConstantBuffer<T>::ConstantBuffer(TinyEngine::Renderer* renderer): _renderer(renderer)
 {
 	D3D11_BUFFER_DESC desc = {};
 	desc.ByteWidth = sizeof(T);

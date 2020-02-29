@@ -5,18 +5,56 @@
 #include <unordered_map>
 #include "Input.h"
 #include <string>
-#include "Actor.h"
 #include "Mesh.h"
 #include "Texture.h"
 #include "Material.h"
-#include "FreeCameraActor.h"
-#include "MeshActor.h"
 
 // OBJL is a bit rubbish, since i cant indlude the header i've prototyped what i need here.
 namespace objl
 {
 	struct Material;
 }
+
+struct Rect
+{
+	float left = 0, top = 0, right = 0, bottom = 0;
+
+	static inline bool Intersect(const Rect& a, const Rect& b);
+};
+
+struct Object
+{
+	DirectX::XMFLOAT2 position = {};
+	float width = 1.0f;
+	float height = 1.0f;
+	TinyEngine::Mesh* mesh = nullptr;
+	std::vector<TinyEngine::Material*> materials;
+
+	Rect GetBounds();
+
+	Object() {}
+	Object(TinyEngine::Mesh* mesh, std::vector<TinyEngine::Material*> materials);
+};
+
+struct Camera : public TinyEngine::ICamera, public TinyEngine::IObserver
+{
+public:
+	DirectX::XMFLOAT3 position = {};
+
+private:
+	float _aspectRatio = 1.0f;
+
+public:
+	void SetAspectRatio(float aspectRatio);
+
+	// Inherited via ICamera
+	virtual DirectX::XMFLOAT3 GetEyePosition() override;
+	virtual DirectX::XMMATRIX GetView() override;
+	virtual DirectX::XMMATRIX GetProjection() override;
+
+	// Inherited via IObserver
+	virtual void OnNotify(const TinyEngine::Event& event) override;
+};
 
 class Game :
 	public TinyEngine::TinyEngineGame
@@ -30,8 +68,15 @@ public:
 
 private:
 	// Game
-	Actor* _rootActor;
 	Input _inputHandler;
+
+	Camera _camera;
+
+	DirectX::XMFLOAT3 _ballDirection;
+
+	Object _leftPaddle;
+	Object _rightPaddle;
+	Object _ball;
 
 public:
 	// Asset manager?
@@ -39,9 +84,6 @@ public:
 	std::vector<MeshAsset> _meshes;
 	std::unordered_map<std::string, TinyEngine::Texture*> _textures;
 	TinyEngine::Texture* _nullTexture;
-
-	// Game
-	TinyEngine::ICamera* _activeCamera;
 
 public:
 	Game(int width, int height, const char* title);
@@ -59,4 +101,7 @@ public:
 	virtual void OnUpdate(float elapsed, float delta) override;
 
 	virtual Input* GetInput() const override;
+
+private:
+	void ShootBall();
 };

@@ -1,8 +1,8 @@
 #include "Game.h"
 
-#pragma warning(disable: 4067 4244)
+#pragma warning(disable: 4067 4244 4018)
 #include "vendor/OBJ_Loader.h";
-#pragma warning(default: 4067 4244)
+#pragma warning(default: 4067 4244 4018)
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_FAILURE_USERMSG
@@ -11,7 +11,7 @@
 #include <iostream>
 #include <DirectXMath.h>
 #include <filesystem>
-#include "CameraActor.h"
+#include <algorithm>
 
 using namespace DirectX;
 using namespace TinyEngine;
@@ -19,21 +19,17 @@ using namespace TinyEngine;
 using std::cout;
 using std::endl;
 using std::vector;
+using std::clamp;
 
-Game::Game(int width, int height, const char* title) : TinyEngine::TinyEngineGame(width, height, title), _activeCamera(nullptr)
+Game::Game(int width, int height, const char* title) : TinyEngine::TinyEngineGame(width, height, title)
 {
 	SetInputHandler(&_inputHandler);
 
 	_nullTexture = new Texture(GetRenderer());
-
-	_rootActor = new Actor(this);
 }
 
 Game::~Game()
 {
-	delete _rootActor;
-	_rootActor = nullptr;
-
 	delete _nullTexture;
 	_nullTexture = nullptr;
 
@@ -175,30 +171,39 @@ void Game::OnInit()
 {
 	auto renderer = GetRenderer();
 
-	auto* camera = new CameraActor(this);
-	camera->SetParent(_rootActor);
-	camera->SetPosition({ 0.0f, 0.0f, -4.0f });
-	camera->SetAspectRatio(static_cast<float>(this->GetWidth()) / static_cast<float>(this->GetHeight()));
-	AddObserver(*camera);
-	_activeCamera = camera;
+	_camera.position = { 0.0f, 0.0f, -50.0f };
+	_camera.SetAspectRatio(static_cast<float>(this->GetWidth()) / static_cast<float>(this->GetHeight()));
+	AddObserver(_camera);
 
 	auto sphereMesh = LoadMesh("./assets/mesh/sphere_1u.obj");
 	auto cubeMesh = LoadMesh("./assets/mesh/cube_1u.obj");
 
-	auto* sphereActor = new MeshActor(this);
-	sphereActor->SetMesh(sphereMesh.mesh);
-	sphereActor->SetMaterials(sphereMesh.materials);
-	sphereActor->SetParent(_rootActor);
+	_ball.mesh = sphereMesh.mesh;
+	_ball.materials = sphereMesh.materials;
+	_ball.position = { 0.0f, 0.0f };
+	_ball.width = 1.0f;
+	_ball.height = 1.0f;
 
-	auto* paddleActor = new MeshActor(this);
-	paddleActor->SetMesh(cubeMesh.mesh);
-	paddleActor->SetMaterials(cubeMesh.materials);
-	paddleActor->SetParent(_rootActor);
+	float paddleDistance = 30.0f;
 
-	XMStoreFloat3(&renderer->lights[0].direction, XMVector3Normalize(XMVectorSet(-1.0f, -1.0f, 0.0f, 0.0f)));
+	_leftPaddle.mesh = cubeMesh.mesh;
+	_leftPaddle.materials = cubeMesh.materials;
+	_leftPaddle.position = { -paddleDistance, 0.0f };
+	_leftPaddle.width = 1.0f;
+	_leftPaddle.height = 4.0f;
+
+	_rightPaddle.mesh = cubeMesh.mesh;
+	_rightPaddle.materials = cubeMesh.materials;
+	_rightPaddle.position = { paddleDistance, 0.0f };
+	_rightPaddle.width = 1.0f;
+	_rightPaddle.height = 4.0f;
+
+	ShootBall();
+
+	XMStoreFloat3(&renderer->lights[0].direction, XMVector3Normalize(XMVectorSet(-1.0f, 0.0f, 1.0f, 0.0f)));
 	renderer->lights[0].color = { 1.0, 1.0, 1.0, 1.0f };
 
-	XMStoreFloat3(&renderer->lights[1].direction, XMVector3Normalize(XMVectorSet(1.0f, -1.0f, 1.0f, 0.0f)));
+	XMStoreFloat3(&renderer->lights[1].direction, XMVector3Normalize(XMVectorSet(1.0f, 0.0f, 1.0f, 0.0f)));
 	renderer->lights[1].color = { 0.0, 1.0, 1.0, 1.0f };
 
 	XMStoreFloat3(&renderer->lights[2].direction, XMVector3Normalize(XMVectorSet(-1.0f, -2.0f, -1.0f, 0.0f)));
@@ -208,22 +213,158 @@ void Game::OnInit()
 	renderer->SetClearColor({ 0.1f, 0.1f, 0.2f, 1.0f });
 }
 
+void UpdatePaddle(Input& input, Object& paddle, Key upKey, Key downKey, float delta)
+{
+	const float moveSpeed = 25.0f;
+	const float maxVertical = 15.0f;
+	float move = 0.0f;
+
+	if (input.GetKey(upKey))
+	{
+		move++;
+	}
+
+	if (input.GetKey(downKey))
+	{
+		move--;
+	}
+
+	paddle.position.y += move * moveSpeed * delta;
+
+	paddle.position.y = clamp(paddle.position.y, -maxVertical, maxVertical);
+}
+
 void Game::OnUpdate(float elapsed, float delta)
 {
 	auto input = GetInput();
 
-	if (input->GetKeyDown(Key::ESC))
-	{
-		auto window = GetWindow();
-		window->SetCaptureMouse(!window->GetCaptureMouse());
-		window->SetMouseVisible(!window->GetMouseVisible());
+	UpdatePaddle(*input, _leftPaddle, Key::W, Key::S, delta);
+	UpdatePaddle(*input, _rightPaddle, Key::I, Key::K, delta);
+
+	const float speed = 25.0f;
+	XMVECTOR vecDirection = XMVector3Normalize(XMLoadFloat3(&_ballDirection));
+
+	XMFLOAT2 ballPos = _ball.position;
+
+	float verticalBound = 17.0f;
+
+	if (verticalBound - ballPos.y < 0) {
+		vecDirection = XMVector3Normalize(XMVector3Reflect(vecDirection, XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f)));
 	}
 
-	_rootActor->OnUpdate(elapsed, delta);
-	_rootActor->OnDraw(GetRenderer());
+	if (-verticalBound - ballPos.y > 0) {
+		vecDirection = XMVector3Normalize(XMVector3Reflect(vecDirection, XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)));
+	}
+
+	if (input->GetKey(Key::SPACE)) {
+		__debugbreak();
+	}
+
+	auto vecBallPos = XMLoadFloat2(&_ball.position);
+
+	if (Rect::Intersect(_ball.GetBounds(), _leftPaddle.GetBounds()))
+	{
+		auto vecPaddlePos = XMLoadFloat2(&_leftPaddle.position);
+		vecDirection = XMVector2Normalize(vecBallPos - vecPaddlePos);
+	}
+
+	if (Rect::Intersect(_ball.GetBounds(), _rightPaddle.GetBounds()))
+	{
+		auto vecPaddlePos = XMLoadFloat2(&_rightPaddle.position);
+		vecDirection = XMVector2Normalize(vecBallPos - vecPaddlePos);
+	}
+
+	XMStoreFloat3(&_ballDirection, vecDirection);
+
+	auto vecPos = XMLoadFloat2(&_ball.position);
+
+	vecPos += vecDirection * speed * delta;
+
+	XMStoreFloat2(&_ball.position, vecPos);
+
+	if (ballPos.x > 34.0f || ballPos.x < -34.0f)
+	{
+		ShootBall();
+	}
+
+	auto renderer = GetRenderer();
+
+	auto world = XMMatrixScaling(_ball.width, _ball.height, 1.0f) * XMMatrixTranslation(_ball.position.x, _ball.position.y, 0.0f);
+	renderer->DrawMesh(_ball.mesh, _ball.materials, &_camera, world);
+
+	world = XMMatrixScaling(_leftPaddle.width, _leftPaddle.height, 1.0f) * XMMatrixTranslation(_leftPaddle.position.x, _leftPaddle.position.y, 0.0f);
+	renderer->DrawMesh(_leftPaddle.mesh, _leftPaddle.materials, &_camera, world);
+
+	world = XMMatrixScaling(_rightPaddle.width, _rightPaddle.height, 1.0f) * XMMatrixTranslation(_rightPaddle.position.x, _rightPaddle.position.y, 0.0f);
+	renderer->DrawMesh(_rightPaddle.mesh, _rightPaddle.materials, &_camera, world);
 }
 
 Input* Game::GetInput() const
 {
 	return static_cast<Input*>(TinyEngineGame::GetInput());
+}
+
+void Game::ShootBall()
+{
+	_ball.position = {};
+	_ballDirection =  { (rand() > (RAND_MAX / 2)) ? -1.0f : 1.0f, 0.0f, 0.0f};
+}
+
+inline bool Rect::Intersect(const Rect& a, const Rect& b)
+{
+	return (a.left < b.right) && (a.right > b.left) && (a.top > b.bottom) && (a.bottom < b.top);
+}
+
+Rect Object::GetBounds()
+{
+	auto w = width / 2;
+	auto h = height / 2;
+
+	return {
+		position.x - w,
+		position.y + h,
+		position.x + w,
+		position.y - h,
+	};
+}
+
+Object::Object(Mesh* mesh, std::vector<Material*> materials): mesh(mesh), materials()
+{
+
+}
+
+void Camera::SetAspectRatio(float aspectRatio)
+{
+	_aspectRatio = aspectRatio;
+}
+
+DirectX::XMFLOAT3 Camera::GetEyePosition()
+{
+	return position;
+}
+
+DirectX::XMMATRIX Camera::GetView()
+{
+	return XMMatrixLookAtLH(XMLoadFloat3(&position), XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f), XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+}
+
+DirectX::XMMATRIX Camera::GetProjection()
+{
+	return XMMatrixPerspectiveFovLH(XM_PIDIV4, _aspectRatio, 0.01f, 1000.0f);
+}
+
+void Camera::OnNotify(const TinyEngine::Event& event)
+{
+	switch (static_cast<EngineEventType>(event.GetType()))
+	{
+	case EngineEventType::WINDOW_RESIZE:
+	{
+		const auto& resizeEvent = static_cast<const ResizeEvent&>(event);
+		SetAspectRatio(static_cast<float>(resizeEvent.x) / static_cast<float>(resizeEvent.y));
+
+		break;
+	}
+	default:
+		break;
+	}
 }

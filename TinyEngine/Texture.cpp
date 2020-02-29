@@ -1,17 +1,17 @@
 #define TINY_ENGINE_EXPOSE_NATIVE
 #include "Texture.h"
-#include "IRenderer.h"
+#include "Renderer.h"
 #include <iostream>
 
 using std::cout;
 using std::endl;
 using Microsoft::WRL::ComPtr;
 
-TinyEngine::Texture::Texture(IRenderer* renderer): _renderer(renderer)
+TinyEngine::Texture::Texture(Renderer* renderer): _renderer(renderer)
 {
 }
 
-TinyEngine::Texture::Texture(IRenderer* renderer, const unsigned char* data, int width, int height) : _renderer(renderer)
+TinyEngine::Texture::Texture(Renderer* renderer, const unsigned char* data, int width, int height) : _renderer(renderer)
 {
 	D3D11_TEXTURE2D_DESC desc = {};
 	desc.Width = width;

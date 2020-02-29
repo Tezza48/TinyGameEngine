@@ -1,18 +1,16 @@
 #pragma once
 
-#include <Windows.h>
-
 namespace TinyEngine
 {
 	// Keyboard key codes.
 	enum class Key
 	{
-		ESC = VK_ESCAPE,
-		SPACE = VK_SPACE,
-		LEFT = VK_LEFT,
-		UP = VK_UP,
-		RIGHT = VK_RIGHT,
-		DOWN = VK_DOWN,
+		ESC = 0x1B,
+		SPACE = 0x20,
+		LEFT = 0x25,
+		UP,
+		RIGHT,
+		DOWN,
 		N0 = 0x30,
 		N1,
 		N2,

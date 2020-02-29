@@ -1,8 +1,22 @@
 #pragma once
-#include <Windows.h>
 #include <vector>
 #include "Subject.h"
 #include "EngineEventType.h"
+
+struct HWND__;
+typedef HWND__* HWND;
+
+#if _WIN64
+typedef long long LRESULT;
+typedef unsigned int UINT;
+typedef unsigned long long WPARAM;
+typedef long long LPARAM;
+#else
+typedef long LRESULT;
+typedef unsigned int UINT;
+typedef unsigned int WPARAM;
+typedef long LPARAM;
+#endif
 
 namespace TinyEngine
 {
@@ -42,7 +56,7 @@ namespace TinyEngine
 #endif
 
 	private:
-		static LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM lparam);
+		static LRESULT __stdcall WndProc(HWND hwnd, UINT uMsg, WPARAM wparam, LPARAM lparam);
 	};
 
 	class ResizeEvent :

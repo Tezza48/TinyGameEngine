@@ -26,9 +26,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)ICamera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)IRenderer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)Key.h">
       <Filter>Header Files</Filter>
     </ClInclude>
