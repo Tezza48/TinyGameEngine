@@ -1,4 +1,5 @@
 #include "Window.h"
+#define WIN32_MEAN_AND_LEAN
 #include <Windows.h>
 #include <iostream>
 #include "TinyEngineGame.h"
